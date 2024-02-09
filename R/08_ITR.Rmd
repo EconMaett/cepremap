@@ -1,0 +1,740 @@
+---
+Title: Implicit Tax Rates on Consumption and Labor in Europe
+Date: 2019-11-06
+category: Data
+tags: database, tax, R, DBnomics
+slug: implicit_tax_rates
+authors: Thomas Brand, Mateo Caicedo
+summary: We compute the implicit tax rates on consumption and labour for France, Italy, Spain, Germany and the Euro Area since 1995. 
+download: https://git.nomics.world/macro/implicit_tax_rates
+output: html_document
+bibliography: biblio_ITR.bib
+---
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+if (!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman", repos='http://cran.r-project.org')
+pacman::p_load(tidyverse,rdbnomics,stringr,seasonal,magrittr,zoo,lubridate,knitr,kableExtra,readxl)
+
+opts_chunk$set(fig.align="center", message=FALSE, warning=FALSE, cache=FALSE)
+
+theme <-  theme_bw()+ theme(strip.background=element_blank(),
+                            strip.text=element_text(size=15),
+                            title=element_text(size=16),
+                            panel.border=element_blank(),
+                            panel.grid.major=element_line(size=1),
+                            legend.key=element_rect(colour="white"),
+                            legend.position="bottom",
+                            legend.text=element_text(size=10),
+                            axis.text=element_text(size=10),
+                            plot.title=element_text(hjust=0.5))
+
+blueObsMacro <- "#0D5BA4"
+
+listcountry <- list("France"  = "FR",
+                    "Germany"  = "DE",
+                    "Italy" = "IT",
+                    "Spain" = "ES",
+                    "Euro Area" = "EA19")
+
+yearmax <- 2019
+```
+
+The aim of this blog post is to compute the implicit tax rates (ITR) on consumption, labour and corporate income for France, Italy, Spain, Germany and the Euro Area since 1995. We use as reference the report on Taxation trends in the European Union (2019) from the European Commission, and the previous reports since 2014.
+
+This database is built and updated through [DBnomics](https://db.nomics.world/) using the <a href="https://cran.r-project.org/web/packages/rdbnomics/index.html" target="_blank">rdbnomics</a> package. All the code is written in R, thanks to the [@Rct16] and [@RStu16]. 
+
+# Implicit tax rate on consumption
+
+The ITR on consumption is defined as all consumption taxes divided by the final consumption expenditure of households (domestic concept). The DG Taxation & Customs Union of the European Commission proposes a detailed calculation methodology <a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2017_-_methodology.pdf" target="_blank">here</a>. We follow this general methodology using Eurostat's data for the 19 countries composing the Euro Area, and we will add some specificities for France, Germany, Italy and Spain using national tax lists. Given that the ITR is a ratio, we structure this section in 4 steps. We begin by gathering all data on consumption taxes (the numerator), we add the specificities for France, Germany, Italy and Spain, then we retrieve data on the final consumption expenditure of households on the economic territory (the denominator), and we finish by constituting the Euro Area GDP-weighted average. 
+
+## Step 1: taxes on consumption
+
+Following the DG Taxation & Customs Union's methodology, we consider as taxes on consumption the following aggregates (values in parenthesis represent the ESA 2010 nomenclature):
+
+1. Value added type taxes (D211)
+ 
+2. Taxes and duties on imports excluding VAT (D212)
+
+3. Taxes on products except VAT and import duties (D214), excluding:  
+    a. Stamp taxes (D214B)  
+    b. Taxes on financial and capital transactions (D214C)  
+    c. Export duties and monetary compensatory amounts on exports (D214K)
+ 
+4. From other taxes on production:  
+    a. Taxes on international transactions (D29D)  
+    b. Taxes on pollution (D29F)  
+    c. Under-compensation of VAT (flat rate system) (D29G)
+   
+5. From other current taxes:  
+    a. Poll taxes (D59B)  
+    b. Expenditure taxes (D59C)  
+    c. Payments by households for licences (D59D)
+   
+These aggregates can be found in Eurostat's database, using the dataset "Main national accounts tax aggregates" (`gov_10a_taxag`).
+
+```{r}
+url_country <- paste(c("AT","BE","CY","EE","FI","FR","DE","EL","IE","IT",
+                       "LV","LT","LU","MT","NL","PT","SK","SI","ES"),
+                     collapse = "+")
+url_taxes <- paste(c("D211","D212",
+                     "D214","D214B","D214C","D214K",
+                     "D29D","D29F","D29G",
+                     "D59B","D59C","D59D"),
+                   collapse = "+")
+filter <- paste0("A.MIO_NAC.S13_S212.",url_taxes,".",url_country)
+
+ITR_cons_num <- 
+  rdb("Eurostat","gov_10a_taxag", mask = filter) %>%
+  filter(year(period)>=1995 & year(period)<yearmax) %>% 
+  select(country=geo,period,var=na_item,value)
+```
+
+We check the beginning and the end of the data series we have just obtained from Eurostat's database:
+```{r, echo=F}
+ITR_cons_min_d <-
+  ITR_cons_num %>%
+  na.omit %>%
+  group_by(country,var) %>%
+  summarize(mindate= min(year(period))) %>%
+  spread(var,mindate)
+
+kable(ITR_cons_min_d, "html", caption = "Taxes on consumption: beginning of the sample") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed",  "responsive"), position = "center", font_size = 12) %>%
+  footnote(general = "The following taxes are not applicable for some countries (in a determined period of time): D214B, D214C, D214K, D29D, D29F, D29G, D59B, D59C, D59D. Thus we replace their NA values by 0 for the calculation.", number = c("D214B is not applicable for: EE, LV, SI. ", "D214C is not applicable for: EE, LV, SI; it is applicable for FI since 1997. ", "D214K is not applicable for: EE, FI, IT, LT, MT PT, SI,SK. ", "D29D is not applicable for: EE, FI, IT, LT, LV, MT, PT, SI, SK. ", "D29F is applicable since: 1996 for FI, 2007 for MT, and 2006 for PT.", "D29G is not applicable for: EE, FI, IT, LT, LV, MT, PT; it is applicable for SI since 1999.", "D59B is not applicable for: EE, FI, IT, LT, LV, MT, SI, SK; it is applicable for PT since 2015.", "D59C is not applicable for: EE, FI, IT, LT, LV, PT, SI, SK.", "D59D is not applicable for: EE; it is applicable for LV since 2007. "))
+
+ITR_cons_max_d <-
+  ITR_cons_num %>%
+  na.omit %>%
+  group_by(country,var) %>%
+  summarize(maxdate= max(year(period))) %>%
+  spread(var,maxdate)
+
+kable(ITR_cons_max_d, "html", caption = "Taxes on consumption: end of the sample") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed",  "responsive"), position = "center", font_size = 12)%>%
+  footnote(general = "The following taxes are not applicable for some countries (in a determined period of time): D214B, D214C, D214K, D29D, D29F, D29G, D59B, D59C, D59D. Thus we replace their NA values by 0 for the calculation.", number = c("D214B is not applicable for: EE, LV, SI;  it is applicable for FI until 2002, and for SK until 2004.", "D214C is not applicable for: EE, LV, SI.", "D214K is not applicable for: EE, FI, IT, LT, MT PT, SI,SK.  it is applicable for MT until 1999.", "D29D is not applicable for: EE, FI, IT, LT, LV, MT, PT, SI, SK.", "D29G is not applicable for: EE, FI, IT, LT, LV, MT, PT.", "D59B is not applicable for: EE, FI, IT, LT, LV, MT, SI, SK.", "D59C is not applicable for: EE, FI, IT, LT, LV, PT, SI, SK;  it is applicable for MT until 1995", "D59D is not applicable for: EE."))
+
+```
+
+## Step 2: taxes on consumption - example of specificities for France, Germany, Italy and Spain
+
+We pay special attention to France, Italy, Spain & Germany, and following the DG Taxation & Customs Union we add some specificities using a detailed list of taxes and social contributions according to national classification (NTLs - national tax lists), as follows:
+
+<a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/data_on_taxation/fr-national-tax.xlsx" target="_blank">France</a>:
+
+1. From council tax (D59A):  
+    a. (C05):part raised on consumption.
+
+2. From capital transfers from general government to relevant sectors representing taxes and social contributions assessed but unlikely to be collected (D995):  
+    a. part raised on consumption.
+
+<a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/data_on_taxation/de-national-tax.xlsx" target="_blank">Germany</a>: 
+
+1. From other current taxes n.e.c. (D59F):  
+    a. (C03): tax on radio and TV.
+
+<a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/data_on_taxation/it-national-tax.xlsx" target="_blank">Italy</a>:  
+
+1. From stamp taxes (D214B):  
+    a. (C01): excise duty on tobacco.  
+    b. (C02): excise duty on spirits.  
+    c. (C03): receipts from sale of denaturing agents and govemment seals
+    
+2. From other current taxes on production n.e.c. (D29H):  
+    a. (C02): other taxes on production.  
+    b. (C05): fees to national & local economic bodies.
+
+<a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/data_on_taxation/es-national-tax.xlsx" target="_blank">Spain</a>: 
+
+1. From taxes on products except VAT and import duties (D214) exclude also:  
+    a. (D214L_C01): tax on building, equipment and works.  
+
+2. From other taxes on production assessed but unlikely to be collected (D995B):  
+    a. part raised on consumption.
+    
+To find more information about other EU country specificities, check the National Tax Lists online in the DG Taxation and Customs Union <a href="https://ec.europa.eu/taxation_customs/business/economic-analysis-taxation/data-taxation_en" target="_blank">website</a>, or Eurostat's dedicated <a href="https://ec.europa.eu/eurostat/statistics-explained/index.php/Tax_revenue_statistics" target="_blank">website</a> on Tax Revenue Statistics.
+
+```{r}
+conso_specificities <- 
+  read_xlsx("s_conso.xlsx") %>%
+  mutate(period=as.Date(period)) %>% 
+  select(country, period, var, value=total) %>%
+  filter(year(period)>=1995 & year(period)<yearmax) %>%
+  spread(var,value)
+
+ITR_cons_num <-
+  ITR_cons_num %>%
+  spread(var,value) %>% 
+  left_join(conso_specificities,by=c("country","period"))
+  
+ITR_cons_num[is.na(ITR_cons_num)] <- 0
+
+ITR_cons_num <-
+  ITR_cons_num %>%
+  transmute(period,
+            country,
+            value=D211+D212+(D214-D214B-D214C-D214K)+(D29D+D29F+D29G)+(D59B+D59C+D59D)+spec) %>%
+  add_column(var="tx_cons")
+```
+
+## Step 3: final consumption expenditure of households on the economic territory
+
+The denominator of the ratio we are constituting is defined as the final consumption expenditure of households on the economic territory - domestic concept (P31_S14_DC). This aggregate can be retrieved from Eurostat's dataset "Final consumption aggregates by durability" (`nama_10_fcs`).
+
+```{r}
+filter <- paste0("A.CP_MNAC.","P31_S14_DC",".",url_country)
+
+ITR_cons_den <- 
+  rdb("Eurostat","nama_10_fcs",mask = filter) %>%
+  filter(year(period)>=1995 & year(period)<yearmax) %>% 
+  select(country=geo,period,value,var=na_item)
+```
+
+```{r, echo=F}
+ITR_cons_minmax_d <-
+  ITR_cons_den %>%
+  na.omit %>%
+  group_by(country) %>%
+  summarize(mindate= min(year(period)),maxdate=max(year(period)))
+
+kable(ITR_cons_minmax_d, "html", caption = "Final consumption expenditure of households: beginning and end of the sample",table.attr = "style=\"width:100%\"") #%>%
+  #kable_styling(position = "center", font_size = 12)
+
+ITR_consumption <- 
+  bind_rows(ITR_cons_num,ITR_cons_den) %>%
+  spread(var,value) %>%
+  transmute(country,period,value=tx_cons/P31_S14_DC)
+```
+
+
+## Step 4: Euro Area GDP-weighted average
+
+After setting up the ITR on consumption for the 19 countries that compose the Euro Area, it is possible to build the GDP-weighted average for the Euro Area. First, it is necessary to establish the weights that will be used for this purpose, using the GDP of each country (million purchasing power standards). Data series for each country is available since 1995.
+
+```{r}
+filter <- paste0("A.CP_MPPS.","B1GQ",".",url_country)
+
+gdp <- 
+  rdb("Eurostat","nama_10_gdp",mask = filter) %>% 
+  select(period,value,country=geo) %>%
+  add_column(var="gdp") %>% 
+  filter(year(period)>=1995 & year(period)<yearmax)
+
+EA_gdp <-
+  gdp %>%
+  group_by(period) %>%
+  summarize(value=sum(value))
+
+weights <-
+  gdp %>%
+  left_join(EA_gdp,by="period") %>%
+  ungroup() %>%
+  transmute(country, period, weight=value.x/value.y)
+```
+
+Now we apply these weights to our country data in order to build the Euro Area GDP-weighted average. The figure below shows the final series for France, Germany, Italy, Spain and the Euro Area.
+
+```{r, fig.height=5, fig.width=10}
+ITR_consumption_EA_na <-
+  ITR_consumption %>%
+  left_join(weights,by=c("country","period"))
+
+ITR_consumption_EA_na[is.na(ITR_consumption_EA_na)] <- 0
+
+ITR_consumption_EA <-
+  ITR_consumption_EA_na %>%
+  transmute(period,value=value*weight) %>%
+  group_by(period) %>%
+  summarize(value =sum(value)) %>%
+  add_column(country="EA19")
+
+ITR_consumption_4 <- 
+  ITR_consumption %>%
+  filter(grepl('FR|DE|IT|ES', country))
+
+ITR_consumption_FIN <- 
+  bind_rows(ITR_consumption_4,ITR_consumption_EA) %>%
+  add_column(var="Consumption tax")
+
+ITR_consumption_FIN$country <- factor(ITR_consumption_FIN$country)                  
+levels(ITR_consumption_FIN$country) <- listcountry
+
+ggplot(ITR_consumption_FIN,aes(period,value,colour=country))+
+  geom_line()+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL) + 
+  theme(legend.title=element_blank()) +
+  ggtitle("Implicit Tax Rate on Consumption")
+```
+
+# Implicit tax rate on labour
+
+The  ITR  on  employed  labour  is  defined  as  the  sum  of  all direct  and  indirect  taxes  and  employees’  and  employers’ social  contributions levied  on  employed  labour  income, divided  by  the  total  compensation  of  employees  working in the economic territory. As for the ITR on consumption, the DG Taxation & Customs Union of the European Commission proposes a detailed calculation methodology  <a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2017_-_methodology.pdf" target="_blank">here</a>.
+We follow this general methodology using Eurostat data. Given the nature of the ITR, we structure this section in 5 steps. We begin by gathering all data on employed labour taxes (the numerator), we add the specificities for France, Germany, Italy and Spain, then we deal with the special case of the personal income tax. After that we retrieve data on the total compensation of employees & wage bill and payroll taxes, and finally we constitute the Euro Area GDP-weighted average. 
+
+## Step 1: taxes on employed labour
+
+Following the DG Taxation & Customs Union's methodology, we consider as taxes on employed labour the following aggregates:
+
+1. From taxes on income:  
+    a. Taxes on individual or household income including holding gains - part raised on labour income (D51A_C1). We deduce the part raised on labor income in the next step
+2. From other current taxes:  
+    a. Total wage bill and payroll taxes (D29C)
+3. From employers’ actual social contributions:  
+    a. Compulsory employers’ actual social contributions (D611C)
+4. From households’ actual social contributions:  
+    a. Compulsory employees’ actual social contributions (D613CE)
+
+These aggregates can be  can be retrieved from Eurostat’s dataset "Main national accounts tax aggregates" (`gov_10a_taxag`).
+
+```{r}
+url_taxes <- paste(c("D51A_C1","D29C","D611C","D613CE"),
+                   collapse = "+")
+filter <- paste0("A.MIO_NAC.S13_S212.",url_taxes,".",url_country)
+
+ITR_lab_num_raw <- 
+  rdb("Eurostat","gov_10a_taxag",mask = filter)
+
+ITR_lab_num1 <-
+  ITR_lab_num_raw %>%
+  transmute(country=geo,period,var=na_item,value) %>%
+  filter(year(period)>=1995 &  year(period)<yearmax & !grepl('D51A_C1', var))
+```
+
+## Step 2: taxes on employed labour - example of specificities for France, Germany, Italy and Spain:
+
+We pay special attention to France, Italy, Spain & Germany, and following the DG Taxation & Customs Union we add some specificities using a detailed list of taxes and social contributions according to national classification (NTLs - national tax lists), as follows:
+
+<a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/data_on_taxation/fr-national-tax.xlsx" target="_blank">France</a>: 
+
+1. From contributions on the value added of the corporations (D29A):  
+    a. part raised on employers' labour tax.
+
+2. From capital transfers from general government to relevant sectors representing taxes and social contributions assessed but unlikely to be collected (D995):  
+    a. part raised on employers' labour tax.  
+    b. part raised on employees' labour tax.
+
+3. From taxes on individual or household income including holding gains - part raised on labour income (D51A_C1), exclude the following for the calculation of the personal income tax:  
+    a. (D51A_C02): used dividend imputation (positive).  
+    b. (D51A_C05): civil servants contribution to the unemployment insurance regime.  
+    c. (D51A_C06): other social levies.  
+    d. (D51A_C08): levies on the income from financial assets (PRCM).  
+
+4. From taxes on individual or household income including holding gains - part raised on labour income (D51A_C1), include the following for the calculation of the Employees' SSC:  
+    a. (D51A_C05): civil servants contribution to the unemployment insurance regime.
+
+<a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/data_on_taxation/es-national-tax.xlsx" target="_blank">Spain</a>: 
+
+1. Taxes on income assessed but unlikely to be collected (D995C).  
+    a. part raised on personal income tax.
+
+For Italy and Germany, it is also possible to apply some specificities, e.g. for Germany the trade tax (D51M_C4) can be excluded from D51A_C1, and for Italy part of the Revenu from IRAP tax can be included to labour and employers' SSC. However, the general formula was already sufficient to recover the general trend of the implicit tax rate. To find more information about other EU country specificities, check the National Tax Lists online in the DG Taxation and Customs Union <a href="https://ec.europa.eu/taxation_customs/business/economic-analysis-taxation/data-taxation_en" target="_blank">website</a>, or Eurostat's dedicated <a href="https://ec.europa.eu/eurostat/statistics-explained/index.php/Tax_revenue_statistics" target="_blank">website</a> on Tax Revenue Statistics.
+
+```{r}
+labour_specificities <- 
+  read_xlsx("s_labour.xlsx") %>%
+  mutate(period=as.Date(period)) %>% 
+  select(country, period, corr_pit=total_split1,corr_leyrs=total_leyrs, corr_lees=total_lees) %>%
+  filter(year(period)>=1995 & year(period)<yearmax)
+```
+
+## Step 3: personal income tax, part raised on labour income
+
+The fundamental methodological problem in calculating the ITR on labour relies in this part: the personal income tax is broad-based and relates to multiple sources of income (i.e.  employed  labour, self-employed labour, income  from  capital  and  income  in  the  form  of social benefits and pensions received). For constituting this ITR, it is then only necessary to use the part raised on labour income. The DG Taxation & Customs Union uses disaggregated taxpayers' data in order to  allocate the personal income tax revenue across different sources of income. It provides data for estimating the part of the revenue from personal income tax that can be attributed to labour income. The tables below can be found in the reports on Taxation Trends in the European Union in its <a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2020.pdf" target="_blank"> 2020</a>, <a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2019.pdf" target="_blank"> 2019</a>, <a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2018.pdf" target="_blank"> 2018</a>, <a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2017.pdf" target="_blank"> 2017</a>, <a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/tax_structures/2016/econ_analysis_report_2016.pdf" target="_blank"> 2016</a> and <a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/tax_structures/2014/report.pdf" target="_blank"> 2014</a> editions (pages 297, 292, 292, 276, 330 and 303 respectively). We will chain the tables by averaging the data points when they differ from table to table, in order to get the (1995-2018) series on the percentage of personal income tax revenue allocated to employed labour income. We use these percentages to obtain the final series on personal income tax raised on labour income.
+
+```{r}
+url_country_pit <- paste(c("AT","BE","CY","EE","FI","FR","DE","EL","IE","IT",
+                           "LV","LT","LU","MT","NL","PT","SK","SI","ES"),
+                         collapse = "|")
+
+pit_2020_raw <- read_csv("pit_2020.csv") %>% 
+  filter(grepl(url_country_pit, country))
+```
+
+```{r, echo=F}
+pit_2020_raw_d <-
+  pit_2020_raw %>% 
+  gather(period,value,-country) %>%
+  mutate(period=year(period)) %>%
+  spread(period,value)
+
+kable(pit_2020_raw_d, "html", caption = "Personal income tax revenue allocated to employed labour income, in % of total revenue of personal income tax (2004–2018)",table.attr = "style=\"width:100%\"")# %>%
+  #kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), position = "center", font_size = 12)
+```
+
+
+```{r}
+pit_2020 <-
+  pit_2020_raw %>%
+  gather(period,r_2020,-country)
+
+pit_2019 <- read_csv("pit_2019.csv") %>%
+  filter(grepl(url_country_pit, country)) %>% 
+  gather(period,r_2019,-country)
+
+pit_2018 <- read_csv("pit_2018.csv") %>%
+  filter(grepl(url_country_pit, country)) %>% 
+  gather(period,r_2018,-country)
+
+pit_2017 <- read_csv("pit_2017.csv") %>%
+  filter(grepl(url_country_pit, country)) %>% 
+  gather(period,r_2017,-country)
+
+pit_2016 <- read_csv("pit_2016.csv") %>%
+  filter(grepl(url_country_pit, country)) %>% 
+  gather(period,r_2016,-country)
+
+pit_2014 <- read_csv("pit_2014.csv") %>%
+  filter(grepl(url_country_pit, country)) %>% 
+  gather(period,r_2014,-country)
+
+pit <-
+  pit_2014 %>%
+  full_join(pit_2016,by=c("country","period")) %>%
+  mutate(r_2016=ifelse(is.na(r_2016),r_2014,r_2016)) %>%
+  full_join(pit_2017,by=c("country","period")) %>%
+  mutate(r_2017=ifelse(is.na(r_2017),r_2016,r_2017)) %>%
+  full_join(pit_2018,by=c("country","period")) %>%
+  mutate(r_2018=ifelse(is.na(r_2018),r_2017,r_2018)) %>%
+  full_join(pit_2019,by=c("country","period")) %>%
+  mutate(r_2019=ifelse(is.na(r_2019),r_2018,r_2019)) %>%
+  full_join(pit_2020,by=c("country","period")) %>%
+  mutate(r_2020=ifelse(is.na(r_2020),r_2018,r_2020)) %>%
+  transmute(country,period=ymd(period),a_weight=r_2020/100)
+
+ITR_lab_num2 <-
+  ITR_lab_num_raw %>%
+  transmute(country=geo,period,var=na_item,value) %>%
+  filter(year(period)>=1995 & year(period)<yearmax & var=="D51A_C1") %>%
+  left_join(labour_specificities, by=c("country","period"))%>%
+  left_join(pit,by=c("country","period"))
+  
+ITR_lab_num2[is.na(ITR_lab_num2)] <- 0
+ 
+ITR_lab_num2<-
+  ITR_lab_num2 %>%
+  transmute(country,period,var,value=((value+corr_pit)*a_weight))
+
+ITR_lab_num <-
+  bind_rows(ITR_lab_num1,ITR_lab_num2)
+```
+
+## Step 4: compensation of employees, wage bill and payroll taxes
+
+The total compensation of employees (D1) is part of the denominator of the ratio we are constituting. Following the DG Taxation & Customs Union's methodology, it is defined as total remuneration, in cash or in kind, payable by an employer to an employee in return for work done. It consists of gross wages (in cash or in kind) and thus also the amount paid as social insurance contributions and wage withholding tax. In addition, employers’ social  contributions  (including  imputed  social  contributions) as well as to private  pensions and related  schemes are included. Personal income taxes and social contributions paid  by  EU  civil  servants  to  the  EU  Institutions  are  not  included. Compensation of employees is thus a broad measure of the gross economic income from employment before any charges are withheld. This aggregate can be retrieved from Eurostat's database, using the dataset "GDP and main components (output, expenditure and income)" (`nama_10_gdp`).
+
+```{r}
+filter <- paste0("A.CP_MNAC.","D1",".",url_country)
+
+ITR_lab_den<- 
+  rdb("Eurostat","nama_10_gdp", mask = filter) %>%
+  transmute(country=geo,period,value,var=na_item) %>%
+  filter(year(period)>=1995 & year(period)<yearmax)
+
+ITR_labour_na <- 
+  bind_rows(ITR_lab_num,ITR_lab_den) %>%
+  spread(var,value)
+```
+
+
+```{r, echo=F}
+ITR_lab_min_d <-
+  ITR_labour_na %>%
+  gather(var,value,-country,-period) %>%
+  na.omit %>%
+  group_by(country,var) %>%
+  summarize(mindate= min(year(period))) %>%
+  spread(var,mindate)
+
+kable(ITR_lab_min_d, "html", caption = "Taxes on employed labour: beginning of the sample") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed",  "responsive"), position = "center", font_size = 12) %>%
+  footnote(general = "The following aggregates are not applicable for some countries (in a determined period of time): D51A_C1, D29C, D611C, D613CE. Thus we replace their NA values by 0 for the calculation.", number = c("D1 has not been collected for IE before 1998. We will omit these points in the estimation.","D29C is not applicable for: EE, MT and SK; it is applicable for LT since 2002 and for LV since 2003.", "D611C is not available, exists but has not been transmitted/collected for PT.", "D613C is applicable for EE since 2002; it is not available, exists but has not been collected for PT before 2010"))
+
+ITR_lab_max_d  <-
+  ITR_labour_na %>%
+  gather(var,value,-country,-period) %>%
+  na.omit %>%
+  group_by(country,var) %>%
+  summarize(maxdate= max(year(period))) %>%
+  spread(var,maxdate)
+
+kable(ITR_lab_max_d, "html", caption = "Taxes on employed labour: end of the sample") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed",  "responsive"), position = "center", font_size = 12) %>% 
+  footnote(general = "The following aggregates are not applicable for some countries (in a determined period of time): D51A_C1, D29C, D611C, D613CE. Thus we replace their NA values by 0 for the calculation.", number = c("D1 has not been collected for IE before 1998. We will omit these points in the estimation.","D29C is not applicable for: EE, MT and SK; it is applicable for LT since 2002 and for LV since 2003.", "D611C is not available, exists but has not been transmitted/collected for PT.", "D613C is applicable for EE since 2002; it is not available, exists but has not been collected for PT before 2010"))
+```
+
+```{r}
+ITR_labour_na <- 
+  ITR_labour_na %>%
+  left_join(labour_specificities, by=c("country","period"))
+
+ITR_labour_na[is.na(ITR_labour_na)] <- 0 
+
+ITR_labour <-
+  ITR_labour_na %>%
+  transmute(country,period,
+            ITR_labour=(D51A_C1+D29C+D611C+D613CE+corr_leyrs+corr_lees)/(D1+D29C),
+            ITR_pi=D51A_C1/(D1+D29C),
+            ITR_essc=(D613CE+corr_lees)/(D1+D29C),
+            ITR_esscprt=(D611C+D29C+corr_leyrs)/(D1+D29C))
+```
+
+## Step 5: Euro Area GDP-weighted average
+
+After setting up the ITR on labour for the 19 countries that compose the Euro Area, it is possible to build the GDP-weighted average for the Euro Area. We use the same weights that were established for the ITR on consumption. The chart below shows the final series for France, Germany, Italy, Spain and the Euro Area.
+
+```{r, fig.height=5, fig.width=10}
+ITR_labour_EA <-
+  ITR_labour %>%
+  left_join(weights,by=c("country"="country","period"="period")) %>%
+  filter(ITR_labour<1) %>%
+  transmute(period,
+            ITR_labour=ITR_labour*weight,
+            ITR_pi=ITR_pi*weight,
+            ITR_essc=ITR_essc*weight,
+            ITR_esscprt=ITR_esscprt*weight) %>%
+  group_by(period) %>%
+  summarize(ITR_labour=sum(ITR_labour),
+            ITR_pi=sum(ITR_pi),
+            ITR_essc=sum(ITR_essc),
+            ITR_esscprt=sum(ITR_esscprt)) %>%
+  add_column(country="EA19")
+
+ITR_labour_4 <- 
+  ITR_labour%>%
+  filter(grepl('FR|DE|IT|ES', country))
+
+ITR_labour_FIN1 <- 
+  bind_rows(ITR_labour_4,ITR_labour_EA)
+
+ITR_labour_FIN1$country <- factor(ITR_labour_FIN1$country)                  
+levels(ITR_labour_FIN1$country)<-listcountry
+
+ggplot(ITR_labour_FIN1,aes(period,ITR_labour,colour=country))+
+  geom_line()+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL) + 
+  theme(legend.title=element_blank()) +
+  ggtitle("Implicit Tax Rate on Labour")
+```
+
+For the analysis, it is possible to recover the evolution of the personal income tax, the employees' SSC and the employers' SSC as a share of the ITR on labour. The chart below shows this evolution:
+
+```{r, fig.height=9, fig.width=10}
+ITR_labour_shares <- 
+  ITR_labour_FIN1 %>%
+  transmute(country,period,
+            w_pi=ITR_pi/ITR_labour,
+            w_essc=ITR_essc/ITR_labour,
+            w_esscprt=ITR_esscprt/ITR_labour) %>%
+  gather(var,value,-period,-country)
+
+listVar <- list("Personal Income Tax"  = "w_pi",
+                "Employees' SSC"  = "w_essc",
+                "Employers' SSC and payroll taxes" = "w_esscprt")
+
+ITR_labour_shares$var <- factor(ITR_labour_shares$var)
+levels(ITR_labour_shares$var)<-listVar
+
+ggplot(ITR_labour_shares,aes(period,value,colour=var))+
+  geom_line()+
+  facet_wrap(~country ,scales ="fixed",ncol = 2)+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL) + 
+  theme(plot.title=element_text(size=16),
+        legend.title=element_blank()) +
+  ggtitle("Personal Income Tax, Employees' SSC and Employers' SSC & payroll taxes \n (as a share of the ITR on Labour)")
+```
+
+The chart below shows the evolution of the composition of the ITR on labour:
+```{r, fig.height=9, fig.width=10}
+ITR_labour_FIN <-
+  ITR_labour_FIN1 %>%
+  select(-ITR_labour) %>%
+  gather(var,value, -period, -country)
+
+listVar <- list("Labour income tax"  = "ITR_pi",
+                "Employees' SSC"= "ITR_essc",
+                "Employers' SSC and payroll taxes" = "ITR_esscprt")
+
+ITR_labour_FIN$var <- factor(ITR_labour_FIN$var)
+levels(ITR_labour_FIN$var)<-listVar
+
+ggplot(ITR_labour_FIN, aes(fill=var, y=value, x=period)) + 
+  geom_bar(stat="identity")+
+  facet_wrap(~country ,scales ="fixed",ncol = 3)+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL) + 
+  theme(legend.title=element_blank()) +
+  ggtitle("Composition of the Implicit Tax Rate on Labour")
+```
+
+And the last chart shows all the ITRs for a multi-country comparison:
+
+```{r, fig.height=5, fig.width=10}
+ggplot(ITR_labour_FIN,aes(period,value,colour=country))+
+  geom_line()+
+  facet_wrap(~var ,ncol = 3)+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL) + 
+  theme(legend.title=element_blank()) +
+  ggtitle("Implicit Tax Rates on Labour (%)")
+```
+
+# Implicit tax rate on corporate income
+
+The methodology for calculating the ITR on corporate income that proposes the DG Taxation & Customs Union may exceed the statutory corporate tax rate, for instance, on the payment by corporation of  taxes  referring  to  profits  earned  earlier,  or  on  taxes  paid  on  capital  gains  (which  are  not  included  in  the ITR  denominator  due  to  a  lack  of  statistics). That is why, in this section we choose the top statutory corporate income tax rate (including surcharges) as a proxy. Data can be downloaded directly from the DG Taxation & Customs Union <a href="https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2019_statutory_rates.xlsx" target="_blank"> here</a>. Concerning the GDP-weighted average for the Euro Area, we will use these country tax rates and the same weights that were established for the ITR on consumption to constitute it. The chart below shows the final series for France, Germany, Italy, Spain and the Euro Area.
+
+```{r, fig.height=5, fig.width=10}
+ITR_corporate_income <- 
+  read_csv("ITR_corporate_income.csv") %>%
+  gather(period,value,-country) %>%
+  transmute(country,period=ymd(period),value=value/100) %>%
+  filter(year(period)>=1995 & year(period)<yearmax)
+
+ITR_corporate_income_EA <-
+  ITR_corporate_income %>%
+  left_join(weights,by=c("country","period")) %>%
+  transmute(period,value=value*weight) %>%
+  group_by(period) %>%
+  summarize(value =sum(value)) %>%
+  add_column(country="EA19")
+
+ITR_corporate_income_4 <- 
+  ITR_corporate_income%>%
+  filter(grepl('FR|DE|IT|ES', country))
+
+ITR_corporate_income_FIN <- 
+  bind_rows(ITR_corporate_income_4,ITR_corporate_income_EA) %>%
+  add_column(var="Corporate income tax")
+
+ITR_corporate_income_FIN$country <- factor(ITR_corporate_income_FIN$country)                  
+levels(ITR_corporate_income_FIN$country)<-listcountry
+
+ggplot(ITR_corporate_income_FIN,aes(period,value,colour=country))+
+  geom_line()+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL) + 
+  theme(legend.title=element_blank()) +
+  ggtitle("Implicit Tax Rate on Corporate Income")
+```
+
+# Average values
+
+We summarize the average values of the implicit tax rates in the following table:
+```{r}
+ITR <- 
+  bind_rows(ITR_corporate_income_FIN,ITR_labour_FIN,ITR_consumption_FIN) %>% 
+  na.omit() %>%
+  mutate(value=round(value,3))
+
+ss_ITR<-
+  ITR %>%
+  group_by(var,country) %>% 
+  summarize(steady_state =mean(value)) %>% 
+  mutate(steady_state=round(steady_state,3)) %>% 
+  spread(country, steady_state) %>%
+  ungroup() 
+```
+
+```{r, echo=F}
+kable(ss_ITR, "html", caption = "Implicit tax rates - average values",table.attr = "style=\"width:100%\"") #%>%
+  #kable_styling(bootstrap_options = c("striped", "hover", "condensed"), position = "center")
+```
+
+```{r, fig.height=9, fig.width=10}
+ss_ITR_plot <-
+  ss_ITR%>%
+  gather(country,value,-var)
+
+ggplot(ss_ITR_plot,aes(country, value, fill=country))+
+  geom_bar(stat="identity")+
+  facet_wrap(~var ,scales ="free_y",ncol = 3)+
+  theme + xlab(NULL) + ylab(NULL) + 
+  theme(legend.title=element_blank(),
+        strip.text=element_text(size=12)) +
+  ggtitle("Implicit tax rates - average values")
+```
+
+We can download ready-to-use data for France, Germany, Italy, Spain and the Euro Area in csv format <a href="http://shiny.nomics.world/data/ITR_eurodata.csv" target="_blank">here</a>.
+
+```{r}
+listtau <- list("taun" = "Labour income tax" ,
+                "tauwh" = "Employees' SSC",
+                "tauwf" = "Employers' SSC and payroll taxes",
+                "tauc" = "Consumption tax", 
+                "tauk" = "Corporate income tax")
+
+list_country <- list("FR"="France",
+                     "DE"="Germany",
+                     "IT"="Italy",
+                     "ES"= "Spain",
+                     "EA"="Euro Area")
+
+ITR$country <- factor(ITR$country)                  
+levels(ITR$country)<-list_country
+
+ITR$var <- factor(ITR$var)                  
+levels(ITR$var)<-listtau
+
+ITR_eurodata <- 
+  ITR %>% 
+  unite("var",c("country","var")) %>%
+  mutate(period=year(period)) %>%
+  spread(var,value)
+
+write.csv(ITR_eurodata,"ITR_eurodata.csv",row.names = FALSE)
+```
+
+# Comparison
+
+The Directorate-General for Taxation & Customs Union of the European Commission provides data on the implicit tax rates on consumption and labour since 2005, using detailed revenue data provided by member states. You can find this data <a href="https://ec.europa.eu/taxation_customs/business/economic-analysis-taxation/data-taxation_en" target="_blank">here</a>. We compare in this section our series with the ones of the European Commission in the charts below.
+
+The main steps, together with some specificities, allow to recover the general trend of the implicit tax rates. Some differences remain, and they stem mainly from the last <a href="https://ec.europa.eu/eurostat/statistics-explained/index.php/Tax_revenue_statistics" target="_blank">update</a> of National Tax Lists, which was on June 2020, whereas the last <a href="https://ec.europa.eu/taxation_customs/business/economic-analysis-taxation/data-taxation_en" target="_blank">update</a> of the Taxation Trends Report was on February 2020. Other minimal differences could stem from taxes assessed but unlikely to be collected when the data was released, or eventually discretionary adjustments or specificities applied by the DG Taxation and Customs Union.
+
+```{r}
+labour_comp <-
+  ITR_labour_FIN1%>%
+  select(country,period,value=ITR_labour) %>%
+  add_column(var="Labour tax")
+
+conso_labour_comp <-
+  bind_rows(labour_comp,ITR_consumption_FIN) %>%
+  add_column(data_s="Updated")
+
+eucom <- read_csv("eucom.csv") %>%
+  rename(value=eucom) %>% 
+  mutate(value=value/100)
+
+eucom$country <- factor(eucom$country)                  
+levels(eucom$country) <- listcountry
+
+comparison <-bind_rows(conso_labour_comp,eucom)
+```       
+
+```{r, fig.height=9, fig.width=10}
+comparison1 <-
+  comparison %>%
+  filter(var=="Consumption tax")
+
+ggplot(comparison1,aes(period,value,colour=data_s))+
+  geom_line()+
+  facet_wrap(~country ,scales ="fixed",ncol = 3)+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL) + 
+  theme(legend.title=element_blank()) +
+  ggtitle(expression(atop("Consumption tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))))
+```
+
+```{r, fig.height=9, fig.width=10}
+comparison2 <-
+  comparison %>%
+  filter(var=="Labour tax")
+
+ggplot(comparison2,aes(period,value,colour=data_s))+
+  geom_line()+
+  facet_wrap(~country ,scales ="fixed",ncol = 3)+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL) + 
+  theme(legend.title=element_blank()) +
+  ggtitle(expression(atop("Labour tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))))
+```

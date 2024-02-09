@@ -1,0 +1,651 @@
+---
+Title: Automating update of a finance database for the Euro Area
+date: 2016-06-01
+Category: Data
+Tags: database, model, estimation, R
+Slug: cmr14-EA-data
+Authors: Thomas Brand
+Summary: Description step by step to build automatic update a finance database for the Euro Area, similar to the Christiano, Motto and Rostagno (2014) database for the US.
+Download: https://git.nomics.world/macro/cmr14-EA-data
+output: html_document
+---
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+if (!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
+pacman::p_load(tidyverse,rdbnomics,magrittr,lubridate,zoo,devtools,knitr)
+
+opts_chunk$set(message=FALSE, warning=FALSE, cache=FALSE,fig.align="center")
+
+# theme for ggplot
+theme <-  theme_bw()+ theme(strip.background=element_blank(),
+                            strip.text=element_text(size=15),
+                            title=element_text(size=16),
+                            panel.border=element_blank(),
+                            panel.grid.major=element_line(size=1),
+                            legend.key=element_rect(colour="white"),
+                            legend.position="bottom",
+                            legend.text=element_text(size=10),
+                            axis.text=element_text(size=10),
+                            plot.title=element_text(hjust=0.5))
+blueObsMacro <- "#0D5BA4"
+```
+
+The aim of this post is to automatically update a database as the one used in [@Chri14a], but for the Euro area, on the basis of the [@Smet03] database.
+
+Four financial series are originally used in [@Chri14a] :
+
+* Loans to non-financial corporations
+* Bank lending rates
+* Entrepreneurial net worth
+* Long-term interest rates
+
+To those series we add 2 series :
+
+* House prices
+* Loans to households
+
+The sources we use here are :
+
+* the Area-Wide Model (AWM), originally constructed by [@Faga01]
+* International Financial Statistics (IMF)
+* Bank for International Settlements
+* European Central Bank
+
+We take data directly from <a href="https://db.nomics.world/" target="_blank">DBnomics</a>. The DBnomics API can be accessed through R with the <a href="https://cran.r-project.org/web/packages/rdbnomics/index.html" target="_blank">rdbnomics</a> package. All the following code is written in R, thanks to the [@Rct16] and the [@RStu16].
+
+# Loans to non-financial corporations and to households
+
+We download loans series from the Bank for International Settlements.
+```{r}
+# List of Euro area countries available in BIS database
+EAtot_code <- c("DE", "FI", "FR", "IT", "PT", "AT", 
+                "GR", "IE", "NL", "BE", "ES", "XM")
+url_country <- paste0(EAtot_code, collapse = "+")
+filter <- paste0("Q.",url_country,".N+H.A.M.XDC.A")
+
+# N or H: Borrowing sector : NFC or Households
+# A: Lending sector : All
+# M: Valuation method : Market value
+# XDC: Unit type: Domestic currency
+# A: Adjustment : Adjustment for breaks
+
+df <- rdb("BIS","total_credit",mask = filter)
+
+loans <- 
+  df   %>% 
+  select(period, series_code, value, BORROWERS_CTY, series_name) %>%
+  rename(var = series_code,
+         country = BORROWERS_CTY) %>%
+  na.omit() %>%
+  filter(year(period)>=1980) %>%
+  arrange(var, period)
+
+loans_nfc <- 
+  loans %>% 
+  filter(substr(var,6,6)=="N") %>% 
+  mutate(var="loans_nfc")
+
+varname_nfc <- unique(as.character(filter(loans_nfc,country == "XM")$series_name))
+loans_nfc %<>% select(-series_name)
+
+loans_hh <- loans %>% 
+  filter(substr(var,6,6)=="H") %>% 
+  mutate(var=as.factor("loans_hh"))
+
+varname_hh <- unique(as.character(filter(loans_hh,country == "XM")$series_name))
+loans_hh %<>% select(-series_name)
+```
+
+We can check the first date available for loans to non-financial corporations and to households (XM stands for Euro area).
+```{r}
+loans_nfc %>% 
+  group_by(country) %>% 
+  summarize(firstdate = min(period)) %>% 
+  arrange(firstdate) %>% 
+  ungroup()
+
+loans_hh %>% 
+  group_by(country) %>% 
+  summarize(firstdate = min(period)) %>% 
+  arrange(firstdate) %>% 
+  ungroup()
+```
+
+We decide to retain only countries which are available before 1990 to compute the aggregated series.
+```{r, fig.align="center", fig.height=7.5, fig.width=8}
+available_country <- filter(loans_nfc,period=="1990-10-01")$country
+
+loans_nfc_countries <- 
+  loans_nfc %>% 
+  filter(country %in% available_country)
+loans_nfc_EA <- 
+  loans_nfc %>% 
+  filter(country=="XM",
+         period>="1999-01-01") %>% 
+  mutate(country = "EA")
+
+ggplot(bind_rows(loans_nfc_countries,loans_nfc_EA),aes(period,value))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country,ncol=3,scales = "free_y")+
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Loans to Non-Financial Corporations (billions of euro)")
+
+loans_hh_countries <- 
+  loans_hh %>% 
+  filter(country %in% available_country)
+loans_hh_EA <- loans_hh %>% 
+  filter(country=="XM") %>% 
+  mutate(country = "EA")
+
+ggplot(bind_rows(loans_hh_countries,loans_hh_EA),aes(period,value))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country,ncol=3,scales = "free_y")+
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Loans to Households and NPISHs (billions of euro)")
+```
+
+
+```{r chain, echo = FALSE}
+chain <- function(to_rebase, basis, date_chain) {
+  
+  date_chain <- as.Date(date_chain, "%Y-%m-%d")
+  
+  valref <- basis %>%
+    filter(period == date_chain) %>%
+    transmute(var, value_ref = value) 
+  
+  res <- to_rebase %>%
+    filter(period <= date_chain) %>%
+    arrange(desc(period)) %>%
+    group_by(var) %>%
+    mutate(growth_rate = c(1, value[-1]/lag(value)[-1])) %>%
+    full_join(valref, by = "var") %>%
+    group_by(var) %>%
+    transmute(period, value = cumprod(growth_rate)*value_ref)%>%
+    ungroup() %>%  
+    bind_rows(filter(basis, period > date_chain)) %>% 
+    arrange(period)
+  
+  return(res)
+
+}
+```
+
+Now we compare raw sum of countries, chained sum of countries and EA series.
+```{r}
+loans_nfc_countries %<>% 
+  select(-var) %>% 
+  mutate(var=country)
+loans_nfc_sumAll <-
+  loans_nfc_countries %>%
+  group_by(period) %>% 
+  summarize(value=sum(value)) %>% 
+  mutate(var="sum")
+loans_nfc_sumNoNL <-
+  loans_nfc_countries %>% 
+  filter(! var == "NL") %>%
+  group_by(period) %>% 
+  summarize(value=sum(value)) %>% 
+  mutate(var="sum")
+loans_nfc_sumNoNLESBE <-
+  loans_nfc_countries %>% 
+  filter(! var %in% c("NL","ES","BE")) %>%
+  group_by(period) %>% 
+  summarize(value=sum(value)) %>% 
+  mutate(var="sum")
+
+loans_nfc_chainedNL <-
+  chain(to_rebase = loans_nfc_sumNoNL, 
+        basis = loans_nfc_sumAll, 
+        date_chain = "1990-10-01")
+loans_nfc_chained <-
+  chain(to_rebase = loans_nfc_sumNoNLESBE, 
+        basis = loans_nfc_chainedNL, 
+        date_chain = "1980-10-01") %>% 
+  mutate(var="chained")
+
+loans_nfc_EA %<>% select(-country) %>% mutate(var="EA")
+
+ggplot(bind_rows(loans_nfc_sumAll, loans_nfc_EA, loans_nfc_chained), aes(period, value,colour=var))+
+  geom_line()+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  theme(legend.title=element_blank()) +
+  ggtitle("Loans to Non-Financial Corporations (billions of euro) [1]")
+```
+
+```{r}
+varname_nfc
+```
+
+
+```{r}
+loans_hh_countries %<>% 
+  select(-var) %>% 
+  mutate(var=country)
+loans_hh_sumAll <-
+  loans_hh_countries %>%
+  group_by(period) %>% 
+  summarize(value=sum(value)) %>% 
+  mutate(var="sum")
+loans_hh_sumNoNL <-
+  loans_hh_countries %>% 
+  filter(! var == "NL") %>%
+  group_by(period) %>% 
+  summarize(value=sum(value)) %>% 
+  mutate(var="sum")
+loans_hh_sumNoNLESBE <-
+  loans_hh_countries %>% 
+  filter(! var %in% c("NL","ES","BE")) %>%
+  group_by(period) %>% 
+  summarize(value=sum(value)) %>% 
+  mutate(var="sum")
+
+loans_hh_chainedNL <-
+  chain(to_rebase = loans_hh_sumNoNL, 
+        basis = loans_hh_sumAll, 
+        date_chain = "1990-10-01")
+loans_hh_chained <-
+  chain(to_rebase = loans_hh_sumNoNLESBE, 
+        basis = loans_hh_chainedNL, 
+        date_chain = "1980-10-01") %>% 
+  mutate(var="chained")
+
+loans_hh_EA %<>% select(-country) %>% mutate(var="EA")
+
+ggplot(bind_rows(loans_hh_sumAll, loans_hh_EA, loans_hh_chained), aes(period, value,colour=var))+
+  geom_line()+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  theme(legend.title=element_blank()) +
+  ggtitle("Loans to Households and NPISHs (billions of euro) [1]")
+```
+
+```{r}
+varname_hh
+```
+
+
+Eventually, we use EA series in levels after 1999, and the growth rates of the sum of loans for available countries to complete the series for historical data.
+
+```{r}
+loans_nfc <-
+  chain(to_rebase = mutate(loans_nfc_chained,var="loans_nfc"),
+        basis = mutate(loans_nfc_EA,var="loans_nfc"),
+        date = "1999-01-01")
+
+loans_hh <-
+  chain(to_rebase = mutate(loans_hh_chained,var="loans_hh"),
+        basis = mutate(loans_hh_EA,var="loans_hh"),
+        date = "1999-01-01")
+```
+
+
+# Bank lending rates
+
+## Historical data from OECD
+
+To build long series of lending rates, we use historical data from the OECD Main Economic Indicators. Historical series will be used before 2000, because such series are available from ECB since 2000Q1. Thus, we consider only five countries. As in the AWM methodology, we weigth the sum of the lending rates by the gross domestic product based on purchasing-power-parity (PPP) of each country in 1995, from the IMF World Economic Outlook. 
+
+```{r}
+country_code <- c("BEL","FRA","DEU","ITA","ESP")
+url_country <- paste0(country_code, collapse = "+")
+
+# Download the 5 countries' lending rates from OECD
+filter <- paste0(url_country,".IR3TIB01.ST.Q")
+df <- rdb("OECD","MEI",mask = filter)
+lendingrate_bycountry <- 
+  df %>%
+  select(country=LOCATION,period, value) %>% 
+  filter(year(period)>=1980)
+
+# Download the 5 countries' PPP GDP from WEO
+filter <- paste0(url_country,".PPPGDP")
+df <- rdb("IMF","WEO:latest",mask = filter)
+pppgdp <- 
+  df %>%
+  filter(period == "1995-01-01") %>% 
+  select(country = `weo-country`,
+         value_pppgdp = value)
+sum_pppgdp <- sum(pppgdp$value_pppgdp)
+
+# Merge databases and build a weighted mean 
+lendingrate_old <- 
+  left_join(lendingrate_bycountry, pppgdp, by = "country") %>% 
+  transmute(period = period,
+            country = country,
+            value = value * value_pppgdp) %>% 
+  group_by(period) %>% 
+  summarise(value = sum(value) / sum_pppgdp) %>% 
+  mutate(var="lendingrate_old")
+```
+
+## Recent data from ECB
+
+```{r}
+df <- rdb(ids="ECB/MIR/M.U2.B.A2A.A.R.A.2240.EUR.N")
+
+varname <- unique(as.character(df$series_name))
+
+lendingrate_recent <- 
+  df %>%
+  select(period, value) %>% 
+  mutate(period=paste(year(period),quarter(period))) %>% 
+  group_by(period) %>% 
+  summarize(value=mean(value)) %>%
+  mutate(var= "lendingrate_recent",
+         period=yq(period))
+```
+
+More precisely, the recent bank lending rates come from the ECB and are described as:
+```{r}
+varname
+```
+
+## Compare historical and recent data
+
+```{r}
+dataplot <- bind_rows(lendingrate_recent,
+                      lendingrate_old)
+
+ggplot(dataplot,aes(period,value, colour=var)) + 
+  geom_line() +
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  theme(legend.title=element_blank()) +
+  ggtitle("Bank lending rate (%)")
+```
+
+## Chain historical and recent data
+
+```{r}
+lendingrecent_value2000Q1 <- 
+  lendingrate_recent %>% 
+  filter(period=="2000-01-01") %>% 
+  pull(value)
+lendingold_value2000Q1 <- 
+  lendingrate_old %>% 
+  filter(period=="2000-01-01") %>% 
+  pull(value)
+diff <- lendingrecent_value2000Q1 - lendingold_value2000Q1
+
+lendingrate <-
+  lendingrate_old %>% 
+  filter(period<="1999-10-01") %>% 
+  mutate(value=value+diff) %>% 
+  bind_rows(lendingrate_recent) %>% 
+  mutate(var="lendingrate")
+```
+
+# Long-term interest rate
+
+The historical long-term interest rate come from the AWM database. The recent one is taken from the ECB.
+
+```{r}
+link_to_awm <- "http://www.eabcn.org/sites/default/files/awm19up15.csv"
+
+if (! "awm19up15.csv" %in% list.files()) {
+  download.file(link_to_awm,
+                destfile = "awm19up15.csv",
+                method = "auto")
+}
+
+awm <- read.csv("awm19up15.csv", sep=",")
+longrate_old <-
+  awm %>% 
+  transmute(longrate = LTN, # Long-Term Interest Rate (Nominal)
+            period = as.Date(as.yearqtr(X))) %>%
+  gather(var, value, -period, convert = TRUE) %>% 
+  filter(year(period)>=1980)
+```
+
+```{r}
+df <- rdb(ids="ECB/IRS/M.I8.L.L40.CI.0000.EUR.N.Z")
+
+varname <- unique(as.character(df$series_name))
+
+longrate_recent <- df %>%
+  select(period, value) %>%
+  mutate(period=paste(year(period),quarter(period))) %>% 
+  group_by(period) %>% 
+  summarize(value=mean(value)) %>%
+  mutate(var= "longrate",
+         period=yq(period))
+
+dataplot <- bind_rows(data.frame(longrate_recent,ind="recent"),
+                      data.frame(longrate_old,ind="old"))
+
+ggplot(dataplot,aes(period,value, colour=ind)) + 
+  geom_line() +
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  theme(legend.title=element_blank()) +
+  ggtitle("Long-term interest rate (%)")
+
+longrate <- chain(basis = longrate_recent,
+                  to_rebase = longrate_old,
+                  date_chain = "2001-01-01")
+```
+
+More precisely, the recent long-term interest rates come from the ECB and are described as
+```{r}
+varname
+```
+
+
+# Entrepreunarial net worth
+
+The entrepreunarial net worth is approximated through the Dow Jones index for the Euro area, in a similar way of what is chosen by [@Chri14a] in the US database.
+```{r}
+df <- rdb(ids="ECB/FM/Q.U2.EUR.DS.EI.DJEURST.HSTA")
+
+varname <- unique(as.character(df$series_name))
+
+networth <- df %>%
+  select(value, period) %>%
+   mutate(var = as.factor("networth"))
+
+ggplot(networth,aes(period,value)) + 
+  geom_line(colour=blueObsMacro) +
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  theme(legend.title=element_blank()) +
+  ggtitle("Entrepreunarial net worth (index)")
+```
+
+More precisely, the index come from the ECB and is described as 
+```{r}
+varname
+```
+
+
+# House prices
+
+```{r}
+df <- rdb(ids="ECB/RPP/Q.I8.N.TD.00.3.00")
+
+varname <- unique(as.character(df$series_name))
+
+houseprice<- df %>%
+  select(value, period) %>%
+    mutate(var = as.factor("houseprice"))
+
+ggplot(houseprice,aes(period,value)) + 
+  geom_line(colour=blueObsMacro) +
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  theme(legend.title=element_blank()) +
+  ggtitle("House price (index)")
+
+```
+
+More precisely, house prices come from the BIS and are described as 
+```{r}
+varname
+```
+
+
+# Final financial database for the Euro area
+
+We build the final financial database with the 6 series described before.
+```{r}
+final_df <- bind_rows(loans_nfc,
+                      loans_hh,
+                      lendingrate,
+                      longrate,
+                      networth,
+                      houseprice)
+```
+
+We can check the last date available for each variable.
+```{r}
+maxDate <- 
+  final_df %>% 
+  filter(var!="houseprice") %>% 
+  group_by(var) %>% 
+  summarize(maxdate=max(period)) %>% 
+  arrange(maxdate)
+kable(maxDate)
+```
+
+
+```{r}
+minmaxDateFinance <- min(maxDate$maxdate)
+final_df %<>% filter(period<=minmaxDateFinance)
+```
+
+So we filter the database until `r as.yearqtr(minmaxDateFinance)`.
+
+```{r}
+plot_df <- final_df
+listVar <- list("Loans to NFC" = "loans_nfc",
+                "Loans to households" = "loans_hh",
+                "Bank lending rate" = "lendingrate",
+                "Entrepreneurial networth" = "networth",
+                "Long-term interest rate" = "longrate",
+                "House price" = "houseprice")
+
+plot_df$var <- factor(plot_df$var)
+levels(plot_df$var)<-listVar
+                     
+ggplot(plot_df,aes(period,value))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~var,scales = "free_y",ncol = 3)+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL) +
+  theme(strip.text=element_text(size=12),
+        axis.text=element_text(size=7))
+```
+
+You can download the 6 financial series directly <a href="http://shiny.cepremap.fr/data/EA_Finance_rawdata.csv" target="_blank">here</a>
+```{r}
+EA_Finance_rawdata <-
+  final_df %>% 
+  spread(key = var, value = value)
+
+EA_Finance_rawdata %>% 
+  write.csv("EA_Finance_rawdata.csv", row.names=FALSE)
+```
+
+# Final CMR database for the Euro area
+
+We eventually want to build a database similar to the [@Chri14a] database, but for the Euro area, on the basis of the [@Smet03] database. The database will begin in 1980Q1, as the financial series are not available before. You can download all the raw series <a href="http://shiny.cepremap.fr/data/EA_CMR_rawdata.csv" target="_blank">here</a>.
+
+```{r}
+# Import EA_SW_rawdata.csv
+EA_SW_rawdata <- 
+  read.csv("https://shiny.cepremap.fr/data/EA_SW_rawdata.csv") %>%
+  mutate(period=ymd(period))
+
+minmaxDateRaw <- max(EA_SW_rawdata$period)
+
+EA_CMR_rawdata <- 
+  EA_SW_rawdata %>%
+  gather(var, value, -period) %>%
+  bind_rows(final_df) %>%
+  filter(period <= min(minmaxDateRaw,minmaxDateFinance),
+         period >= "1980-01-01") %>%
+  spread(var,value) 
+
+EA_CMR_rawdata %>% 
+  write.csv("EA_CMR_rawdata.csv", row.names=FALSE)
+```
+
+Then data are normalized by capita and price if needed. Eventually we have 14 series : the 12 series similar to [@Chri14a] plus loans to households and house price series. 
+
+```{r}
+EA_CMR_data <-
+  EA_CMR_rawdata %>%
+  transmute(period=gsub(" ", "", as.yearqtr(period)),
+            gdp_rpc=1e+6*gdp/(pop*1000),
+            conso_rpc=1e+6*conso/(pop*1000),
+            inves_rpc=1e+6*inves/(pop*1000),
+            defgdp = defgdp,
+            wage_rph=1e+6*wage/defgdp/(hours*1000),
+            hours_pc=1000*hours/(pop*1000),
+            pinves_defl=definves/defgdp,
+            loans_nfc_rpc=1e+9*loans_nfc/(pop*1000)/defgdp,
+            loans_hh_rpc=1e+9*loans_hh/(pop*1000)/defgdp,
+            houseprice_defl=houseprice/defgdp,
+            networth_rpc=1e+6*networth/(pop*1000)/defgdp,
+            re=shortrate/100,
+            slope=(longrate - shortrate)/100,
+            creditspread = (lendingrate - shortrate)/100) 
+
+EA_CMR_data %>% 
+  #na.omit() %>%
+  write.csv("EA_CMR_data.csv", row.names=FALSE)
+```
+
+
+```{r echo=FALSE}
+listVar <- list("Real GDP per capita"                      = "gdp_rpc",
+                "Real consumption per capita"              = "conso_rpc",
+                "Real investment per capita"               = "inves_rpc",
+                "Real credit to NFC per capita"            = "loans_nfc_rpc",
+                "Real credit to HH per capita"             = "loans_hh_rpc",
+                "Real house price"                         = "houseprice_defl",
+                "Real net worth per capita"                = "networth_rpc",
+                "Real price of investment"                 = "pinves_defl",
+                "Real wage per capita"                     = "wage_rph",
+                "GDP deflator"                             = "defgdp",
+                "Hours worked per capita"                  = "hours_pc",
+                "Short-term interest rate (APR)"           = "re",
+                "Credit spread (APP)"                      = "creditspread",
+                "Term premium (APP)"                       = "slope")
+```
+
+
+```{r, fig.height=8.5, fig.width=8}
+plot_EA_CMR_data <- 
+  EA_CMR_data %>% 
+  gather(var, value, -period) %>% 
+  mutate(period=as.Date(as.yearqtr(period)),
+         var=as.factor(var))
+levels(plot_EA_CMR_data$var)<-listVar
+
+ggplot(plot_EA_CMR_data,aes(period,value))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~var,ncol=3,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  theme(strip.text=element_text(size=10),
+        axis.text=element_text(size=9))+
+  ggtitle("CMR data for the Euro area")
+```
+
+You can also download ready-to-use (normalized) data for the estimation <a href="http://shiny.cepremap.fr/data/EA_CMR_data.csv" target="_blank">here</a>.
+
+# Appendix
+
+## Chaining function
+To chain two datasets, we build a chain function whose input must be two dataframes with three standard columns (`period`, `var`, `value`). It returns a dataframe composed of chained values, ie the dataframe "to rebase" will be chained on the "basis" dataframe. 
+
+More specifically, the function : 
+
+* computes the growth rates from `value` in the dataframe of the 1st argument 
+* multiplies it with the value of reference chosen in `value` in the dataframe of the 2nd argument 
+* at the `date` specified in the 3rd argument.
+
+```{r chain}
+```
