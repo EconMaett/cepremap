@@ -2489,7 +2489,7 @@ names(df_final)[8] &lt;- paste0(&quot;2024&quot;, footnote_marker_symbol(2))
 names(df_final)[9] &lt;- &quot;latest&quot;
 
 
-df_final |&gt; 
+df_table &lt;- df_final |&gt; 
   knitr::kable(
     format = &quot;html&quot;,
     row.names = FALSE, 
@@ -2524,7 +2524,9 @@ df_final |&gt;
       paste0(last_year), 
       paste0(before_last_year)
       )
-    )</code></pre>
+    )
+
+df_table</code></pre>
 </div>
 
 
