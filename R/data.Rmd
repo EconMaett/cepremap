@@ -1,0 +1,145 @@
+---
+title: "Données économiques pour calibrer et estimer Mésange"
+author: Thomas Brand et Evariste Jeancard
+output:
+  bookdown::html_document2:
+    code_folding: hide
+    number_sections: true
+    fig_caption: true
+    theme: flatly
+    df_print: paged
+---
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+if (!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman", repos='http://cran.r-project.org')
+pacman::p_load(tidyverse,rdbnomics,magrittr,knitr)
+
+rm(list = ls())
+
+opts_chunk$set(message=FALSE, warning=FALSE, cache=FALSE, fig.align="center")
+
+theme <-  theme_bw()+ theme(strip.background=element_blank(),
+                            strip.text=element_text(size=15),
+                            title=element_text(size=16),
+                            panel.border=element_blank(),
+                            panel.grid.major=element_line(size=1),
+                            legend.key=element_rect(colour="white"),
+                            legend.position="bottom",
+                            legend.text=element_text(size=10),
+                            axis.text=element_text(size=10),
+                            plot.title=element_text(hjust=0.5))
+```
+
+```{r}
+cnt_cb <- rdb("INSEE","CNT-2014-CB","T.CNT-COMPTE_PRODUCTION_BRANCHES.B1+P1E+P2E..VALEUR_ABSOLUE.FE..EUROS.CVS-CJO")
+cnt_op_vol <- rdb("INSEE","CNT-2014-OPERATIONS","T.CNT-OPERATION_BIENS_SERVICES.SO.SO...VALEUR_ABSOLUE.FE.L.EUROS.CVS-CJO")
+cnt_op_val <- rdb("INSEE","CNT-2014-OPERATIONS","T.CNT-OPERATION_BIENS_SERVICES.SO.SO...VALEUR_ABSOLUE.FE.V.EUROS.CVS-CJO")
+cnt_eqb <- rdb("INSEE","CNT-2014-PIB-EQB-RF","T.CNT-EQUILIBRE_PIB..PIB+P51+P51B+P51G+P51M+P51P+P51S+P6+P7..VALEUR_ABSOLUE.FE..EUROS.CVS-CJO")
+
+cnt_short <- 
+  bind_rows(cnt_cb,cnt_op_vol,cnt_op_val,cnt_eqb) %>% 
+  select(value,period,operation=`National accounts operations`,product=CNA_PRODUIT,measure=`Classification of valuations`) %>% 
+  separate(operation,c("operation_code","operation_name")," - ") %>% 
+  mutate(product=str_remove(product,"A17-"),
+         product=str_remove(product,"-CNT")) %>% 
+  mutate(code=paste0(tolower(operation_code),"_",tolower(product))) %>% 
+  mutate(code=case_when(code=="gdp_so" ~ "pib",
+                        TRUE ~ code))
+```
+
+On regarde si nous avons toutes les variables listées dans Mes1a.txt, ligne 45 à 75.
+
+```{r}
+# check if we have all the variables listed line 45-75 in Mes1a.txt
+list_input <- c("p1_az",  "p1_de", "p1_c1", "p1_c2", "p1_c3", "p1_c4", "p1_c5", "p1_fz", "p1_gz", "p1_hz", "p1_iz", "p1_jz", "p1_kz", "p1_lz", "p1_mn", "p1_oq", "p1_ru",
+                "memp_az",  "memp_de", "memp_c1", "memp_c2", "memp_c3", "memp_c4", "memp_c5", "memp_gz", "memp_jz",
+                "temp_az",  "temp_de", "temp_c1", "temp_c2", "temp_c3", "temp_c4", "temp_c5", "temp_hz", "temp_jz",
+                "d211_d","d211_az", "d211_de", "d211_c1", "d211_c2", "d211_c3", "d211_c4", "d211_c5", "d211_fz", "d211_gz", "d211_hz", "d211_iz", "d211_jz", "d211_kz", "d211_lz", "d211_mn", "d211_oq", "d211_ru",
+                "d212_d","d212_db","d212_di","d212_dim","d212_az", "d212_c1", "d212_c2", "d212_c3", "d212_c4", "d212_c5", "d212_jz", 
+                "d214_d","d214_az", "d214_de", "d214_c1", "d214_c2", "d214_c3", "d214_c4", "d214_c5", "d214_fz", "d214_hz", "d214_iz", "d214_jz", "d214_kz", "d214_lz", "d214_mn", "d214_ru",
+                "d319_d","d319_db","d319_di","d319_dim","d319_ds","d319_dsm","d319_az", "d319_c1", "d319_c5", "d319_fz", "d319_hz", "d319_iz", "d319_kz", "d319_mn", "d319_ru",  
+                "p2_d", "p2_az",  "p2_de", "p2_c1", "p2_c2", "p2_c3", "p2_c4", "p2_c5", "p2_fz", "p2_gz", "p2_hz", "p2_iz", "p2_jz", "p2_kz", "p2_lz", "p2_mn", "p2_oq", "p2_ru",
+                "p3m_az", "p3m_de", "p3m_c1", "p3m_c2", "p3m_c3", "p3m_c4", "p3m_c5", "p3m_fz", "p3m_gz", "p3m_hz", "p3m_iz", "p3m_jz", "p3m_kz", "p3m_lz", "p3m_mn", "p3m_oq", "p3m_ru", "p3m_pchtr",
+                "p31g_c1","p31g_c3","p31g_c4","p31g_c5","p31g_hz","p31g_iz","p31g_jz","p31g_lz","p31g_mn","p31g_oq","p31g_ru",
+                "p32g_mn","p32g_oq","p32g_ru",
+                "p3p_oq", "p3p_ru",
+                "p51s_az","p51s_c3","p51s_c4","p51s_c5","p51s_fz","p51s_jz","p51s_lz","p51s_mn","p51s_ru",
+                "p51m_fz","p51m_lz","p51m_mn",
+                "p51b_c3","p51b_c4","p51b_c5","p51b_fz","p51b_jz","p51b_lz","p51b_mn","p51b_ru",
+                "p51g_c3","p51g_c4","p51g_c5","p51g_fz","p51g_jz","p51g_mn","p51g_ru",
+                "p51p_c3","p51p_c4","p51p_c5","p51p_fz","p51p_jz","p51p_mn",
+                "p6_az"  ,"p6_de"  ,"p6_c1"  ,"p6_c2"  ,"p6_c3"  ,"p6_c4"  ,"p6_c5"  ,"p6_gz"  ,"p6_hz"  ,"p6_jz" ,"p6_kz" ,"p6_mn" ,"p6_oq" ,"p6_ru" ,"p6_pchtr",
+                "p7_az"  ,"p7_de"  ,"p7_c1"  ,"p7_c2"  ,"p7_c3"  ,"p7_c4"  ,"p7_c5"  ,"p7_gz"  ,"p7_hz"  ,"p7_jz" ,"p7_kz" ,"p7_mn" ,"p7_oq" ,"p7_ru" ,"p7_pchtr" ,"p7_pcafab",
+                "p73_pcafab","p73_ds","p73_fhza","p73_fkza",
+                "b1_d", "b1_dsn", "b1_az", "b1_de", "b1_c1", "b1_c2", "b1_c3", "b1_c4", "b1_c5", "b1_fz", "b1_gz", "b1_hz", "b1_iz", "b1_jz", "b1_kz", "b1_lz", "b1_mn", "b1_oq", "b1_ru",
+                "p1e_d","p1e_dsn","p1e_az","p1e_de","p1e_c1","p1e_c2","p1e_c3","p1e_c4","p1e_c5","p1e_fz","p1e_gz","p1e_hz","p1e_iz","p1e_jz","p1e_kz","p1e_lz","p1e_mn","p1e_oq","p1e_ru",
+                "p2e_d","p2e_dsn","p2e_az","p2e_de","p2e_c1","p2e_c2","p2e_c3","p2e_c4","p2e_c5","p2e_fz","p2e_gz","p2e_hz","p2e_iz","p2e_jz","p2e_kz","p2e_lz","p2e_mn","p2e_oq","p2e_ru",
+                "pib",
+                "p31g_d", "p32g_d", "p31g_dsn", "p32g_dsn","p3p_d", "p3p_dsn", "p3m_d", "p3m_dsn",
+                "p51_d", "p51m_d", "p51s_d", "p51s_fz", "p51g_d", "p51p_d", "p51b_d", 
+                "p6_d", "p6_db", "p6_dsn", "p7_d",
+                "memp_di")
+
+list_db <- unique(cnt_short$code) %>% sort()
+list_tf <- list_input %in% list_db
+
+missing_var <- data.frame(list_tf,list_input) %>% filter(list_tf==FALSE)
+# p31g_d3 = p31g_db3 + p31g_dn3
+```
+
+```{r}
+#Mes1c.txt
+#1-c
+df <- 
+  cnt_short %>% 
+  filter(operation_code %in% c("P2","P2E","P1","P1E")) %>% 
+  select(-code) %>% 
+  spread(product,value) %>% 
+  mutate(dai=AZ+C1+C3+C4+C5,
+         nrj=DE+C2,
+         dse=HZ+JZ+KZ+MN,
+         dsa=FZ+GZ+IZ+LZ+RU,
+         dsn=OQ)
+
+dai_list <- c("AZ","C1","C3","C4","C5")
+nrj_list <- c("DE","C2")
+dse_list <- c("HZ","JZ","KZ","MN")
+dsa_list <- c("FZ","GZ","IZ","LZ","RU")
+dsn_list <- c("OQ")
+```
+
+
+
+```{r eval=FALSE}
+list_input2 <- c("d214_gz","d214_oq",
+                        "memp_fz","memp_hz","memp_iz","memp_kz","memp_lz","memp_mn","memp_oq","memp_ru",
+                        "temp_fz","temp_gz","temp_iz","temp_kz","temp_lz","temp_mn","temp_oq","temp_ru",
+                        "p31g_az","p31g_de","p31g_c2","p31g_fz","p31g_gz","p31g_kz",
+                        "p32g_az","p32g_c1","p32g_c2","p32g_c3","p32g_c4","p32g_c5","p32g_de","p32g_fz","p32g_gz","p32g_hz","p32g_iz","p32g_jz","p32g_kz","p32g_lz",
+                        "p3p_az" ,"p3p_de" ,"p3p_c1" ,"p3p_c2" ,"p3p_c3" ,"p3p_c4" ,"p3p_c5", "p3p_fz", "p3p_gz", "p3p_hz", "p3p_iz", "p3p_jz", "p3p_kz", "p3p_lz" ,"p3p_mn",
+                        "p51s_de","p51s_c1","p51s_c2","p51s_gz","p51s_hz","p51s_iz","p51s_kz","p51s_oq",
+                        "p51m_az","p51m_de","p51m_c1","p51m_c2","p51m_c3","p51m_c4","p51m_c5","p51m_gz","p51m_hz","p51m_iz","p51m_jz","p51m_kz","p51m_oq","p51m_ru",
+                        "p51b_az","p51b_de","p51b_c1","p51b_c2","p51b_gz","p51b_hz","p51b_iz","p51b_kz","p51b_oq",
+                        "p51g_az","p51g_de","p51g_c1","p51g_c2","p51g_gz","p51g_hz","p51g_iz","p51g_kz","p51g_lz","p51g_oq",
+                        "p51p_az","p51p_de","p51p_c1","p51p_c2","p51p_gz","p51p_hz","p51p_iz","p51p_kz","p51p_lz","p51p_oq","p51p_ru",
+                        "p52_gz" ,"p52_hz" ,"p52_iz" ,"p52_kz" ,"p52_lz" ,"p52_oq" ,
+                        "p53_az" ,"p53_de" ,"p53_c1" ,"p53_c2" ,"p53_c3" ,"p53_c4" ,"p53_fz" ,"p53_gz" ,"p53_hz" ,"p53_iz" ,"p53_jz" ,"p53_kz" ,"p53_lz" ,"p53_mn" ,"p53_oq" ,"p53_ru",
+                        "p6_fz"  ,"p6_iz"  ,"p6_lz"  ,
+                        "p7_fz"  ,"p7_iz"  ,"p7_lz"  ,
+                        "p73_az" ,"p73_de" ,"p73_c1" ,"p73_c2" ,"p73_c3" ,"p73_c4" ,"p73_c5" ,"p73_fz" ,"p73_gz" ,"p73_iz" ,"p73_jz" ,"p73_lz" ,"p73_mn" ,"p73_oq" ,"p73_ru")
+
+list_tf2 <- list_input2 %in% list_db
+
+missing_var2 <- data.frame(list_tf2,list_input2) %>% filter(list_tf2==FALSE)
+```
+
+
+```{r eval=FALSE}
+cnt_short_code2 <- 
+  cnt_short_code %>% 
+  mutate(code=paste0("td_",code)) %>% 
+  mutate(code=case_when(str_detect(measure,"Volumes") ~ paste0(code,"7_ch"),
+                         str_detect(measure,"Values") ~ paste0(code,"3")))
+sort(unique(cnt_short_code2$code))
+"td_p32g_ru3" %in% unique(cnt_short_code2$code)
+```

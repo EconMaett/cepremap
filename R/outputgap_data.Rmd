@@ -1,0 +1,1109 @@
+---
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+bibliography: biblio_outputgap.bib
+---
+
+Our purpose is to build an automatically updated database to allow economists to estimate various models of output gap for the G7 such as @benevs2010estimating or @borio2013rethinking. Those articles have in common their particular focus on the importance of financial cycles in the determination of the ouptut gap.
+
+All the charts presented below are updated with the most recent data series available from three major providers : OECD, IMF and BIS. We use national providers only when data is unavailable.
+
+We use [DBnomics](https://db.nomics.world/) in order to build this automatic database. The DBnomics API can be accessed through R thanks to the RSDMX package written by @rsd16. All the following code is written in R, thanks to the @RCT16 and the @RStu16.
+
+The code is freely available on [Gitlab](https://git.nomics.world/macro/outputgap-data) so you can reproduce this database with R and RStudio. You can also download the final database directly at the end of this article.
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+rm(list = ls())
+
+if (!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
+pacman::p_load(tidyverse, magrittr, lubridate,knitr,zoo,rsdmx,seasonal, openxlsx,stringr,readxl)
+
+pacman::p_load_gh("thomasbrand/FredR")
+api.key <- "820ed4f91f76c8fe560514930425118c"
+fred <- FredR(api.key)
+
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, cache=FALSE, fig.align="center", fig.height=8.5, fig.width=8)
+
+theme <-  theme_bw()+ theme(strip.background=element_blank(),
+                            strip.text=element_text(size=10),
+                            title=element_text(size=16),
+                            panel.border=element_blank(),
+                            panel.grid.major=element_line(size=1),
+                            legend.key=element_rect(colour="white"),
+                            legend.position="bottom",
+                            legend.text=element_text(size=10),
+                            axis.text=element_text(size=7),
+                            plot.title=element_text(hjust=0.5))
+
+blueObsMacro <- "#0D5BA4"
+
+url_dbnomics <- "https://api.db.nomics.world/api/v1/sdmx"
+start_date <- 1980
+```
+
+```{r chain, echo = FALSE}
+chain <- function(to_rebase, basis, date_chain) {
+  
+  date_chain <- as.Date(date_chain, "%Y-%m-%d")
+  
+  valref <- basis %>%
+    filter(time == date_chain) %>%
+    transmute(var, values_ref = values) 
+  
+  res <- to_rebase %>%
+    filter(time <= date_chain) %>%
+    arrange(desc(time)) %>%
+    group_by(var) %>%
+    mutate(growth_rate = c(1, values[-1]/lag(values)[-1])) %>%
+    full_join(valref, by = "var") %>%
+    group_by(var) %>%
+    transmute(time, values = cumprod(growth_rate)*values_ref) %>%
+    ungroup()
+    
+  res %<>%  
+    bind_rows(filter(basis, time > date_chain)) %>% 
+    arrange(time)
+  
+  return(res)
+
+}
+```
+
+
+# Domestic macroeconomic data
+
+```{r}
+# to match codes and names (for countries, variables, etc.)
+code_name <- read_excel("code_name.xls",sheet="OECD")
+
+country_code <- code_name$country_code %>% na.omit()
+country_name <- code_name$country_name %>% na.omit()
+url_country <- paste0(country_code, collapse = "+")
+
+df_country <- data.frame(country_code,
+                         country_name)
+```
+
+
+## OECD - Main Economic Indicators
+
+We use the Main Economic Indicators from OECD to get the following series :
+
+- GDP in constant prices
+- GDP deflator
+- Short interest rates
+- Long term interest rates
+- Share prices
+- Consumer prices index (all)
+- Consumer prices index (non-food, non-energy)
+- Capacity utilization
+- Unemployment rate
+
+```{r}
+# MEI dataset
+url_dataset <- "/OECD/data/MEI/"
+
+# Variables
+var_code <- code_name$var_code %>% na.omit()
+var_name <- code_name$var_name %>% na.omit()
+url_var <- paste0(var_code,collapse = "+")
+
+df_var <- data.frame(var_code,
+                     var_name)
+
+# Measurements
+meas_code <- code_name$meas_code %>% na.omit()
+meas_name <- code_name$meas_name %>% na.omit()
+url_meas <- paste0(meas_code,collapse = "+")
+
+url <- paste0(url_dbnomics,url_dataset,url_country,".",url_var,".",url_meas,".Q")
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+```
+
+```{r}
+mei_rawdata <-
+  df %>%
+  rename(country_code = LOCATION,
+         time = TIME_PERIOD,
+         values = OBS_VALUE,
+         var_code = SUBJECT,
+         meas_code = MEASURE) %>%
+  select(country_code,time,values,var_code,meas_code) %>% 
+  mutate(time=as.Date(as.yearqtr(time,format="%Y-Q%q")),
+         values=as.numeric(values))
+
+mei_rawdata %<>%
+  left_join(df_country,by="country_code") %>%
+  left_join(df_var,by="var_code") %>%
+  filter(year(time)>=start_date)
+```
+
+Check which series are not available.
+```{r}
+mei_rawdata %>%
+  group_by(country_name,var_code,meas_code) %>%
+  summarize(firstdate = gsub(" ","",as.yearqtr(min(time)))) %>%
+  arrange(country_name) %>%
+  ungroup() %>%
+  spread(country_name,firstdate) %>% 
+  rename(variable=var_code,
+         measure=meas_code) %>% 
+  kable()
+```
+
+Some data are redundant.
+```{r}
+mei_rawdata %<>% 
+  filter(!(var_code=="CPALTT01" & meas_code=="IXOBSA"),
+         !(var_code=="NAEXKP01" & meas_code=="STSA"),
+         !(var_code=="LRUNTTTT" & meas_code=="ST"),
+         !(var_code=="LFWA64TT" & meas_code=="ST"))
+```
+
+Some data series are missing : 
+
+- GDP constant prices, GDP deflator and long-term interest rates for Japan and Italy ;
+- Short-term interest rates for Japan ;
+- Unemployment rate for France, Great Britain and Italy.
+- Capacity utilization rate for Canada ;
+- Working-age population for Canada and European countries ;
+
+
+Plus GDP deflator and CPI are not seasonally adjusted.
+
+## Missing data 
+
+### GDP, deflator and interest rates in Italy and Japan
+
+We use the Economic Outlook database to fix this problem.
+
+```{r}
+url_dataset <- "/OECD/data/EO/"
+url_var <- "PGDP+GDPV+IRS+IRL"
+url <- paste0(url_dbnomics,url_dataset,"ITA+JPN",".",url_var,".Q")
+
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+
+itajpn_rawdata <-
+  df %>%
+  rename(country_code = LOCATION,
+         time = TIME_PERIOD,
+         values = OBS_VALUE,
+         var_code = VARIABLE) %>%
+  select(country_code,time,values,var_code) %>%
+  mutate(time=as.Date(as.yearqtr(gsub("Q","",time))),
+         values=as.numeric(values)) %>% 
+  filter(time<max(mei_rawdata$time))
+```
+
+We transform to obtain the same base as MEI series.
+```{r}
+# GDP index base in 2010
+bases <- itajpn_rawdata %>%
+  filter(year(time) == 2010,
+         var_code == 'GDPV') %>%
+  group_by(country_code) %>%
+  summarise(values = mean(values))
+
+ita_gdp <- itajpn_rawdata %>%
+  filter(var_code == 'GDPV',
+         country_code == 'ITA') %>%
+  mutate(values = values/bases$values[bases$country_code=='ITA']*100,
+         var_code = "NAEXKP01",
+         meas_code= "IXOBSA")
+
+jpn_gdp <- itajpn_rawdata %>%
+  filter(var_code == 'GDPV',
+         country_code == 'JPN') %>%
+  mutate(values = values/bases$values[bases$country_code=='JPN']*100,
+         var_code = "NAEXKP01",
+         meas_code = "IXOBSA")
+
+# GDP deflator base 100 in 2010
+ita_defl <- itajpn_rawdata %>%
+  filter(var_code == 'PGDP',
+         country_code == 'ITA') %>%
+  mutate(var_code = 'NAGIGP01',
+         values = values*100,
+         meas_code = 'IXOBSA')
+
+jpn_defl_2010 <- itajpn_rawdata %>%
+  filter(var_code == 'PGDP',
+         country_code == 'JPN',
+         year(time) == 2010)
+
+jpn_defl_base <- mean(jpn_defl_2010$values)
+
+jpn_defl <- itajpn_rawdata %>%
+  filter(var_code == 'PGDP',
+         country_code == 'JPN') %>%
+  mutate(var_code = 'NAGIGP01',
+         values = values/jpn_defl_base*100,
+         meas_code = 'IXOBSA')
+
+# Long term interest rates
+ita_irl <- itajpn_rawdata %>%
+  filter(var_code == 'IRL',
+         country_code == 'ITA') %>%
+  mutate(var_code = 'IRLTLT01',
+         meas_code = 'ST')
+
+jpn_irl <- itajpn_rawdata %>%
+  filter(var_code == 'IRL',
+         country_code == 'JPN') %>%
+  mutate(var_code = 'IRLTLT01',
+         meas_code = 'ST')
+
+# Short term interest rates
+jpn_irs <- itajpn_rawdata %>%
+  filter(var_code == 'IRS',
+         country_code == 'JPN') %>%
+  mutate(var_code = 'IR3TIB01',
+         meas_code = 'ST')
+```
+
+We merge new series.
+```{r}
+itajpn_data <-
+  bind_rows(ita_gdp,jpn_gdp,
+            ita_defl,jpn_defl,
+            ita_irl,jpn_irl,
+            jpn_irs)
+```
+
+### Unemployment rate
+
+```{r}
+url_dataset <- "/OECD/data/EO/"
+url <- paste0(url_dbnomics,url_dataset,"FRA+GBR+ITA",".","UNR",".Q")
+
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+
+unemp_data <-
+  df %>%
+  rename(country_code = LOCATION,
+         time = TIME_PERIOD,
+         values = OBS_VALUE,
+         var_code = VARIABLE) %>%
+  select(country_code, var_code, time, values) %>%
+  mutate(time=as.Date(as.yearqtr(gsub("Q","",time))),
+         values=as.numeric(values),
+         var_code="LRUNTTTT",
+         meas_code="STSA")
+```
+
+
+### Capacity utilization in Canada
+
+The capacity utilization rates come from business tendancy surveys conducted by OECD. For more information you can look a the [handbook](https://www.oecd.org/std/leading-indicators/31837055.pdf).
+
+Canadian series come from national provider. 
+
+```{r}
+temp <- tempfile()
+download.file("http://www20.statcan.gc.ca/tables-tableaux/cansim/csv/00280002-eng.zip", temp)
+data <- read.csv(unz(temp, "00280002-eng.csv"))
+
+can_caput <- 
+  data %>%
+  rename(time   = Ref_Date,
+         values = Value )%>%
+  filter(NAICS == "Total industrial") %>%
+  select(time, values) %>%
+  mutate(
+    country_code = "CAN",
+    var_code = "BSCURT02",
+    meas_code = "STSA",
+    time = as.character(time),
+    values = as.numeric(as.character(values)))
+
+can_caput %<>%
+  mutate(time=seq.Date(as.Date("1987-01-01"),
+                       by="3 months",
+                       length=nrow(.)))
+
+# About JAPAN : We don't use OECD series for Japan as no clear explanation is given in OECD codebook. Japanese data is provided with year 2010 as base, that's why capacity utilization is often over one hundred. It won't be a problem for estimation in your models as long as you focus on the rate of change. As they don't provide long series on capacity utilization rate for all sectors we use the manufacturing sector as proxy.
+# Japan series
+# download.file("http://www.meti.go.jp/english/statistics/tyo/iip/xls/b2010_nsgs1e.xls","jap_caput.xls")
+# data <- read_excel("jap_caput.xls", skip=3) %>% 
+#   na.omit()
+# 
+# jpncaput_ts <- aggregate(ts(data[-1,"Manufacturing"], start=c(1978, 1), frequency=12), nfrequency = 4, mean) # Convert monthly data to quarterly
+# 
+# jpncaput <- data.frame(time= as.Date(time(jpncaput_ts)) , values = as.numeric(jpncaput_ts), country = "JPN", var = "caput", measure = "STSA") %>% 
+#   filter(year(time)>=1980)
+
+```
+
+### Working-age population
+
+Canada from MEI and Fred.
+
+```{r}
+pop_can_mei <- 
+  mei_rawdata %>% 
+  filter(var_code=="LFWA64TT",
+         country_code=="CAN") %>% 
+  mutate(values=values/1000) %>% 
+  select(-meas_code)
+
+# Download historical data
+pop_can_old <- 
+  data.frame(fred$series.observations(series_id = 'CANWFPNA')) %>% 
+  select(date,value) %>% 
+  transmute(time=as.Date(date),
+            values=as.numeric(value)/1000) %>% 
+  filter(year(time)>=start_date)
+
+# Convert historical data into quarterly data
+pop_can_old_q <- 
+  data.frame(time=seq(as.Date(paste0(start_date,"-01-01")),
+                      as.Date("2012-01-01"),
+                      by = "quarter"),
+             values=NA) %>%
+  left_join(pop_can_old,by="time") %>% 
+  select(-values.x) %>% 
+  rename(values=values.y) %>% 
+  mutate(values=na.spline(values),
+         var="LFWA64TT")
+
+# Chain pop_can and pop_can_old_q
+pop_can_mei %<>% 
+  select(time, values, var_code) %>% 
+  rename(var=var_code)
+
+can_pop <- 
+  chain(to_rebase = pop_can_old_q, 
+        basis = pop_can_mei, 
+        date_chain = "1995-01-01") %>% 
+  rename(var_code=var) %>% 
+  mutate(country_code="CAN",
+         meas_code="STSA")
+```
+
+European countries from Eurostat.
+
+```{r}
+url_dataset <- "/EUROSTAT/data/demo_pjanbroad/"
+
+url <- paste0(url_dbnomics,url_dataset,"A.NR.Y15-64.T.","DE-TOT+IT+UK+FX+FR")
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+
+pop_eurostat <-
+  df %>% 
+  rename(country_code = GEO,
+         time = TIME_PERIOD,
+         values = OBS_VALUE) %>% 
+  select(country_code, time, values) %>% 
+  mutate(values=as.numeric(values),
+         time=as.Date(paste0(time,"-10-01"))) %>%
+  filter(time >= "1979-10-01")
+
+# Chain data from France
+pop_fx <- pop_eurostat %>% 
+  filter(country_code=="FX") %>% 
+  select(-country_code) %>% 
+  mutate(var="FR")
+
+pop_fr <- pop_eurostat %>% 
+  filter(country_code=="FR") %>% 
+  rename(var=country_code)
+
+pop_fr_chained <- 
+  chain(to_rebase = pop_fx, 
+        basis = pop_fr, 
+        date_chain = "1991-10-01") %>% 
+  rename(country_code=var)
+
+pop_eurostat %<>% 
+  filter(!country_code %in% c("FR","FX")) %>% 
+  bind_rows(pop_fr_chained) %>% 
+  mutate(country_code=gsub("DE-TOT","DE",country_code),
+         values=values/1000000)
+
+# Convert to quarterly data
+seqdate <- seq(as.Date("1979-10-01"),
+               as.Date("2015-10-01"),
+               by = "quarter")
+pop_eurostat_q <- data.frame(UK=seqdate,
+                             FR=seqdate,
+                             DE=seqdate,
+                             IT=seqdate,
+                             values=NA) %>%
+  gather(country_code,time,-values) %>% 
+  left_join(pop_eurostat,by=c("time","country_code")) %>% 
+  select(-values.x) %>% 
+  rename(values=values.y)
+
+euro_pop <- 
+  pop_eurostat_q %>% 
+  group_by(country_code) %>% 
+  mutate(values=na.spline(values)) %>% 
+  ungroup() %>% 
+  mutate(var_code="LFWA64TT",
+         meas_code="STSA",
+         country_code=replace(country_code,country_code=="FR","FRA"),
+         country_code=replace(country_code,country_code=="UK","GBR"),
+         country_code=replace(country_code,country_code=="DE","DEU"),
+         country_code=replace(country_code,country_code=="IT","ITA"))
+```
+
+### Deseasonalize CPI and core CPi
+
+We use raw series from MEI and use the X13-ARIMA Seasonal Adjustment Program developed by the US Census Bureau to remove seasonal components.
+
+```{r}
+cpi_sa <- NULL
+for(co in country_code){
+  cpi_co <- filter(mei_rawdata, country_code==co)
+  for(var in c("CPGRLE01","CPALTT01")){
+    cpi_co_var <- filter(cpi_co, var_code == var)
+    cpi_co_var$values <- as.numeric(final(seas(ts(cpi_co_var$values,start=start_date,freq=4),x11="")))
+    cpi_sa <- bind_rows(cpi_sa,cpi_co_var)
+  }
+}
+cpi_sa %<>% mutate(meas_code="IXOBSA") 
+```
+
+
+### Merge all missing data
+```{r}
+miss_data <-
+  bind_rows(itajpn_data,
+            unemp_data,
+            can_caput,
+            can_pop,
+            euro_pop) %>%
+  left_join(df_country,by="country_code") %>%
+  left_join(df_var,by="var_code") %>%
+  filter(year(time)>=start_date)
+
+domestic_data <-
+  mei_rawdata %>%
+  filter(!(var_code %in% c("NAEXKP01","NAGIGP01","IRLTLT01") & country_code %in% c("ITA","JPN")),
+         !(var_code == "IR3TIB01" & country_code == "JPN"),
+         !(var_code == "LFWA64TT" & country_code %in% c("CAN","FRA","GBR","DEU","ITA")),
+         !(var_code == "LRUNTTTT" & country_code %in% c("FRA","GBR","ITA")),
+         !(var_code %in% c("CPGRLE01","CPALTT01"))) %>%
+  bind_rows(miss_data,
+            cpi_sa) %>% 
+  filter(year(time)<=2016)
+
+# pop_mei <- domestic_data %>%
+#   filter(var_code== "",
+#          country_code %in% c("JPN","USA"),
+#          meas_code=="STSA") %>% 
+#   mutate(values=values/1000)
+```
+
+Check which series are not available.
+```{r}
+domestic_data %>%
+  group_by(country_name,var_code,meas_code) %>%
+  summarize(firstdate = gsub(" ","",as.yearqtr(min(time)))) %>%
+  arrange(country_name) %>%
+  ungroup() %>%
+  spread(country_name,firstdate) %>% 
+  rename(variable=var_code,
+         measure=meas_code) %>% 
+  kable()
+```
+
+```{r}
+domestic_data %>%
+  group_by(country_name,var_code,meas_code) %>%
+  summarize(firstdate = gsub(" ","",as.yearqtr(max(time)))) %>%
+  arrange(country_name) %>%
+  ungroup() %>%
+  spread(country_name,firstdate) %>% 
+  rename(variable=var_code,
+         measure=meas_code) %>% 
+  kable()
+```
+
+## Charts 
+
+### GDP constant prices
+
+```{r}
+ggplot(filter(domestic_data,var_code=="NAEXKP01"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("GDP constant prices (2010=100, s.a.)")
+```
+
+
+### GDP deflator
+```{r}
+ggplot(filter(domestic_data,var_code=="CPALTT01"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("GDP deflator (2010=100, s.a.)")
+```
+
+### Short term interest rates
+Short term interest rates are defined as the 90 days interbank rates. Data are provided by central banks.
+```{r}
+ggplot(filter(domestic_data,var_code=="IR3TIB01"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Short term interest rate (%)")
+```
+
+
+### Long term interest rates
+Long term interest rates are generally 10 years government bonds rates.
+```{r}
+ggplot(filter(domestic_data,var_code=="IRLTLT01"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Long term interest rate (%)")
+```
+
+### Share prices
+Share prices are calculated by the stock exchange and is expressed as a simple arithmetic average of the daily data.
+```{r share_prices, fig.align="center"}
+ggplot(filter(domestic_data,var_code=="SPASTT01"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Share prices (2010=100)")
+```
+
+
+### Consumer Price Index
+```{r}
+ggplot(filter(domestic_data,var_code=="CPALTT01"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("CPI (2010=100, s.a.)")
+```
+
+### Core Consumer Price Index
+```{r}
+ggplot(filter(domestic_data,var_code=="CPGRLE01"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Core CPI (2010=100, s.a.)")
+```
+
+### Capacity utilization
+```{r}
+ggplot(filter(domestic_data,var_code=="BSCURT02"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Capacity utilization rate (%)")
+```
+
+### Unemployment rate
+```{r}
+ggplot(filter(domestic_data,var_code=="LRUNTTTT"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Unemployment rate (%)")
+```
+
+
+# External data
+
+## Import / Export deflators
+
+We use the EO database.
+
+```{r}
+var_code <- c("PXGS", # Export deflator
+              "PMGS")  # Import deflator
+var_name <- c("Export deflator",
+              "Import deflator")
+df_var <- data.frame(var_code,
+                     var_name)
+
+url_dataset <- "/OECD/data/EO/"
+url_country <- paste0(country_code, collapse = "+")
+url_var <- paste0(var_code,collapse = "+")
+
+url <- paste0(url_dbnomics,url_dataset,url_country,".",url_var,".Q")
+
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+
+eo_data <-
+  df %>%
+  rename(country_code = LOCATION,
+         time = TIME_PERIOD,
+         values = OBS_VALUE,
+         var_code = VARIABLE) %>%
+  select(country_code, var_code, time, values) %>%
+  mutate(time=as.Date(as.yearqtr(gsub("Q","",time))),
+         values=as.numeric(values))
+
+eo_data %<>% 
+  left_join(df_country,by="country_code") %>%
+  left_join(df_var,by="var_code")%>%
+  filter(year(time)>=start_date,
+         time<max(domestic_data$time))
+```
+
+
+## Oil
+```{r}
+url <- paste0(url_dbnomics,url_dataset,"OTO.WPBRENT.Q")
+
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+
+oil <-
+  df %>%
+  rename(time = TIME_PERIOD,
+         values = OBS_VALUE,
+         var_code = VARIABLE) %>%
+  select(time, values,var_code) %>%
+  mutate(country_code = "WORLD",
+         values = as.numeric(values),
+         time = as.Date(as.yearqtr(gsub("Q","",time))),
+         var_name = "Oil price",
+         meas_code="ST",
+         country_name="World") %>% 
+  filter(year(time)>=start_date,
+         time<max(mei_rawdata$time))
+```
+
+
+## External demand
+
+We estimates the external demand as a weighted sum of imports with respect to the trading partners size in exports. The equation is given by:
+
+$$ \Delta \ln (W_{i,q}) = \sum_j \alpha_{i,j,y-1} \Delta \ln (M_{i,j,q}) $$
+
+With
+
+ - $W_{i,q}$ the world demand for country i in quarter q.
+ - $\alpha_{i,j,y-1}$  The share of exports from country i to country j relative to toal exports of country i in year y-1.
+ - $M_{i,j,q}$ imports of country i from country j in quarter q.
+
+### Bilateral exports and imports
+We download bilateral exports and imports of 15 major countries in order to compute our index.
+```{r}
+url_dot_dataset <- "/IMF/data/DOT/"
+#country.iso3 = c("112", "156", "158", "111", "132", "136", "134", "193", "273", "172", "228", "186", "144", "196", "122")
+country.iso3 = c("GB","CA","JP","US","FR","IT","DE","AU","MX","FI","CL","TR","SE","NZ","AT")
+country.iso3.name = c("GBR", "CAN", "JPN", "USA", "FRA", "ITA", "DEU", "AUS", "MEX", "FIN", "CHL", "TUR", "SWE", "NZL", "AUT")
+
+url_weo_country <- paste0(country.iso3, collapse = "+")
+
+# Bilateral exports
+url <- paste0(url_dbnomics,url_dot_dataset,"A.",url_weo_country,".txg-fob-usd.",url_weo_country)
+data_sdmx <- readSDMX(url)
+bilatx <- as_tibble(data_sdmx)
+bilatx <-
+  bilatx %>%
+  select(`REF-AREA`,`COUNTERPART-AREA`,OBS_VALUE,INDICATOR,TIME_PERIOD)%>%
+  transmute(exporter = `REF-AREA`,
+            importer = `COUNTERPART-AREA`,
+            values = OBS_VALUE,
+            var = INDICATOR,
+            time = TIME_PERIOD)%>%
+  mutate(var = "xg",
+         exporter = plyr::mapvalues(exporter, from = country.iso3, to = country.iso3.name),
+         importer = plyr::mapvalues(importer, from = country.iso3, to = country.iso3.name))%>%
+  filter(time>=1979)
+
+# Bilateral imports
+url_dot_dataset <- "/OECD/data/EO/"
+url_country <- paste0(country.iso3.name, collapse = "+")
+url <- paste0(url_dbnomics,url_dot_dataset,url_country,".MGSVD.","Q")
+
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+
+# Importations in volume
+imports <-
+  df %>%
+  select(LOCATION, VARIABLE, TIME_PERIOD, OBS_VALUE)%>%
+  rename(importer = LOCATION,
+         var = VARIABLE,
+         time = TIME_PERIOD,
+         values = OBS_VALUE)%>%
+  mutate(time=as.Date(as.yearqtr(gsub("Q","",time))),
+         values = as.numeric(values),
+         year = as.numeric(year(time)))%>%
+  filter(year(time)>=start_date)
+
+```
+
+### Computing the alpha
+For each country and each commercial partners we compute:
+$$ \alpha_{i,j,y}=\frac{X_{i,j,y}}{\sum_j X_{i,j,y}} $$
+This gives us the importance of trading partners for each countries.
+```{r}
+alphas <- NULL
+
+for(country in country.iso3.name){
+
+  #Sum of exports of one country for each quarters (denominator)
+  sumX_cntry <-
+    bilatx %>%
+    filter(exporter == country)%>%
+    group_by(time)%>% # Evaluate the sum for each dates
+    mutate(values = as.numeric(values))%>%
+    summarise(xsum = sum(values))%>%
+    mutate(country = country)
+
+  #Exports to each country for each quarter (numerator)
+  X_cntry <-
+    bilatx %>%
+    filter(exporter == country) # We select the country of which we want to compute the alphas
+
+  # Create the alphas matrix
+  alpha_cntry <-
+    left_join(sumX_cntry, X_cntry, by = 'time') %>%
+    mutate(alpha = as.numeric(values)/as.numeric(xsum),
+           year = as.numeric(time) + 1) %>% # We indent the time to merge it later with the imports database
+    select(year, exporter, importer, alpha)
+
+  # Add the alpha dataset for a specific country to the general dataset
+  alphas <- bind_rows(alphas, alpha_cntry)
+
+}
+```
+
+### Growth rate of world demand
+We compute the growth rate of world demand $\Delta \ln (W_{i,q})$ from the equation above.
+```{r}
+# Growth rate of imports computed as log-difference
+imports <-
+  imports %>%
+  group_by(importer)%>%
+  mutate(lnM = log(values),
+         Mrate = lnM - lag(lnM))%>%
+  select(importer, time, year, Mrate) %>%
+  filter(Mrate != is.na(Mrate))
+
+# Merge alphas and imports datasets
+wd <-
+  right_join(alphas, imports, by = c("year", "importer"))%>%
+  mutate(Mrate = ifelse (is.na(Mrate), 0, Mrate), # Dealing with Na, especially for Germany before 1991
+         M_weighted = alpha * Mrate)%>%
+  filter(time >= as.Date("1980-01-01"),
+         alpha != is.na(alpha))%>%
+  group_by(exporter, time)
+
+# Compute de growth rate of world demand
+wd_growth <- summarise(wd, wdg = sum(M_weighted))
+
+```
+
+### Compute index
+Now we have the growth rate, we transform the series in order to get an index base 100 in 2010
+```{r}
+
+# Transform growth rate to index
+wd_index_nobase <-
+  wd_growth %>%
+  group_by(exporter)%>%
+  mutate(wdg_mult = wdg + 1, index_nobase = cumprod(wdg_mult))
+
+# Compute index base for 2010
+wd_2010 <-
+  wd_index_nobase %>%
+  filter(year(time) == 2010) %>%
+  group_by(exporter)
+
+# Create a matrix with country bases
+bases <- wd_2010 %>%
+  summarise(base = mean(index_nobase))
+
+# Transform index to be in base 100 in 2010
+wd <-
+  right_join(wd_index_nobase, bases, by = 'exporter')%>%
+  mutate(index = index_nobase/base*100)
+
+country_code <- read_excel("code_name.xls",sheet = "OECD")$country_code %>% na.omit()
+
+ext_demand <-
+  wd %>%
+  filter(exporter %in% country_code)%>%
+  select(exporter, time, index) %>%
+  rename(country_code = exporter,
+         values = index)%>%
+  mutate(var_code = 'EXTDEMAND',
+         var_name = "External demand",
+         meas_code = NA) %>% 
+  ungroup() %>% 
+  left_join(df_country,by="country_code") %>% 
+  filter(year(time)>=start_date)
+```
+## Merge
+```{r}
+external_data <- bind_rows(eo_data,
+                           oil,
+                           ext_demand)
+```
+
+Check which series are not available.
+```{r}
+external_data %>%
+  group_by(country_name,var_code) %>%
+  summarize(firstdate = gsub(" ","",as.yearqtr(min(time)))) %>%
+  arrange(country_name) %>%
+  ungroup() %>%
+  spread(country_name,firstdate) %>% 
+  kable()
+```
+
+## Charts
+
+### Exports deflator
+```{r}
+ggplot(filter(external_data,var_code=="PXGS"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Exports of goods and services deflator (index)")
+```
+
+### Imports deflator
+```{r}
+ggplot(filter(external_data,var_code=="PMGS"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Imports of goods and services deflator (index)")
+```
+
+### Oil
+```{r}
+ggplot(filter(external_data,var_code=="WPBRENT"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Crude oil price, world index")
+```
+
+### External demand
+```{r}
+ggplot(filter(external_data,var_code=="EXTDEMAND"), aes(time, values))+
+  geom_line(colour = blueObsMacro)+
+  facet_wrap(~country_name, ncol=2, scale = 'free_y')+
+  scale_x_date(expand = c(0.01,0.01))+
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("External demand (2010=100, s.a.)")
+```
+
+
+# Financial data
+
+We use the Bank for International Settlements database to get our financial datas:
+
+- Credit to private sector
+- Property price
+- Real effective exchange rate
+
+```{r}
+country_code2 <- code_name$country_code2 %>% na.omit()
+
+url_country <- paste0(country_code2, collapse = "+")
+```
+
+## Credit to private sector
+Credit is provided by domestic banks, all other sectors of the economy and non-residents. In terms of financial instruments, credit covers the core debt, defined as loans, debt securities and currency & deposits.
+The long series on credit to the PNFS covers the following borrowing sectors: non-financial corporations (both private-owned and public-owned), households and non-profit institutions serving households.
+```{r}
+url_dataset <- "/BIS/data/CNFS/"
+url <- paste0(url_dbnomics,url_dataset,"Q.",url_country,".P.A.M.XDC.A")
+
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+
+credit_data <-
+  df %>%
+  rename(country_code2 = `BORROWERS-COUNTRY`,
+         time = TIME_PERIOD,
+         values = OBS_VALUE) %>%
+  select(country_code2,time,values) %>%
+  mutate(var_name = "Credit",
+         var_code = "CREDIT",
+         time=as.Date(as.yearqtr(gsub("Q","",time))),
+         values=as.numeric(values))
+```
+
+## Property price
+```{r}
+url_dataset <- "/BIS/data/PP-LS/"
+url <- paste0(url_dbnomics,url_dataset,"Q.",url_country)
+
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+
+pp_data <-
+  df %>%
+  rename(country_code2 = `REFERENCE-AREA`,
+         time = TIME_PERIOD,
+         values = OBS_VALUE) %>%
+  select(country_code2,time,values) %>%
+  mutate(var_name = "Property price",
+         var_code = "HOUSEPRICE",
+         time=as.Date(as.yearqtr(gsub("Q","",time))),
+         values=as.numeric(values))
+```
+
+## Real effective exchange rates
+
+Nominal EERs are calculated as geometric weighted averages of bilateral exchange rates. Real EERs are the same weighted averages of bilateral exchange rates adjusted by relative consumer prices.
+```{r}
+url_dataset <- "/BIS/data/EERI/"
+url <- paste0(url_dbnomics,url_dataset,"M.R.N.",url_country)
+
+data_sdmx <- readSDMX(url)
+df <- as_tibble(data_sdmx)
+
+reer_data_monthly <-
+  df %>%
+  rename(country_code2 = `REFERENCE-AREA`,
+         time = TIME_PERIOD,
+         values = OBS_VALUE) %>%
+  select(country_code2,time,values) %>%
+  mutate(values=as.numeric(values))
+  
+reer_data <-
+  reer_data_monthly %>%
+  mutate(time=as.Date(as.yearmon(time)),
+         year=year(time),
+         quarter=quarter(time)) %>%
+  group_by(country_code2,year,quarter) %>%
+  summarize(values=mean(values,na.rm=T)) %>%
+  ungroup() %>%
+  mutate(time = paste0(year,"Q",quarter),
+         time = as.Date(as.yearqtr(time)),
+         year=NULL,
+         quarter=NULL,
+         var_code="REER",
+         var_name="Real effective exchange rate")
+```
+
+## Merge
+```{r}
+financial_data <- 
+  bind_rows(credit_data,
+            pp_data,
+            reer_data) %>%
+  filter(year(time)>=start_date) %>% 
+  mutate(meas_code=NA)
+
+df_country2 <- data.frame(country_code2,
+                          country_code)
+
+financial_data %<>% 
+  left_join(df_country2,by="country_code2") %>% 
+  select(-country_code2) %>% 
+  left_join(df_country,by="country_code")
+
+```
+
+## Charts
+```{r}
+ggplot(data=filter(financial_data,var_name=="Credit"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Loans to Private non-financial sector (billions of euro)")
+```
+
+```{r}
+ggplot(data=filter(financial_data,var_name=="Property price"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Property prices (billions of euro)")
+```
+
+```{r}
+ggplot(data=filter(financial_data,var_name=="Real effective exchange rate"),aes(time,values))+
+  geom_line(colour=blueObsMacro)+
+  facet_wrap(~country_name,ncol=2,scales = "free_y")+
+  scale_x_date(expand = c(0.01,0.01)) +
+  theme + xlab(NULL) + ylab(NULL)+
+  ggtitle("Real effective exchange rates (index)")
+```
+
+
+
+# Merge all the databases
+
+## All
+```{r}
+df <- bind_rows(domestic_data,
+                external_data,
+                financial_data)
+```
+
+## Check availability of data
+
+```{r}
+df %>%
+  group_by(country_name,var_code) %>%
+  summarize(firstdate = gsub(" ","",as.yearqtr(min(time)))) %>%
+  arrange(country_name) %>%
+  ungroup() %>%
+  spread(country_name,firstdate) %>% 
+  rename(variable=var_code) %>% 
+  kable()
+```
+
+## Save and export
+```{r}
+save(df,file="outputgap_data.RData")
+
+oil <- df %>% filter(var_code=="WPBRENT")
+
+wb <- createWorkbook()
+
+for(co in country_code){
+  
+  addWorksheet(wb,co)
+  
+  df_sheet <-
+    df %>%
+    filter(country_code == co) %>% 
+    bind_rows(oil) %>% 
+    select(-var_code,-country_code,-meas_code,-country_name) %>% 
+    spread(var_name,values)
+  
+  writeDataTable(wb,sheet=co,df_sheet,rowNames = FALSE, withFilter = FALSE)
+
+}
+
+saveWorkbook(wb,"outputgap_data.xls",overwrite = TRUE)
+```
+
+You can download data [here](../data/outputgap-data/outputgap_data.xls).
+
+# References

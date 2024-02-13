@@ -1,0 +1,1006 @@
+---
+title: "Monthly Economic Indicators for France using DBnomics"
+author: Thomas Brand, Thomas Despois, Catherine Doz & Frédéric Karamé
+bibliography: biblio.bib
+output:
+  bookdown::html_document2:
+    code_folding: hide
+    number_sections: true
+    fig_caption: true
+    theme: flatly
+    df_print: paged
+---
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+if (!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman", repos='http://cran.r-project.org')
+pacman::p_load(tidyverse,rdbnomics,magrittr,lubridate,knitr,zoo,readxl,kableExtra,formattable,sparkline,DT,tsfeatures,feasts,htmltools,seasonal,xlsx,rvest)
+
+rm(list = ls())
+
+opts_chunk$set(message=FALSE, warning=FALSE, cache=FALSE, fig.align="center")
+
+theme <-  theme_bw()+ theme(strip.background=element_blank(),
+                            strip.text=element_text(size=15),
+                            title=element_text(size=16),
+                            panel.border=element_blank(),
+                            panel.grid.major=element_line(size=1),
+                            legend.key=element_rect(colour="white"),
+                            legend.position="bottom",
+                            legend.text=element_text(size=10),
+                            axis.text=element_text(size=10),
+                            plot.title=element_text(hjust=0.5))
+```
+
+We want to create a database that gathers mainly monthly series on the fluctuations of the French economy. Based on a previous work by @Bess12 and in a similar spirit to @FredMD and @Fort18, we now distinguish 11 groups for a total of 143 series : 
+
+* Output and income
+* Labor market
+* Firms
+* Survey
+* Money and credit
+* Interest rates and exchange rates
+* Prices
+* Stock market
+* Trade
+* United States
+* Germany
+
+Data are updated automatically mostly from <a href="https://db.nomics.world/" target="_blank">DBnomics</a>. The DBnomics API can be accessed through R with the <a href="https://cran.r-project.org/web/packages/rdbnomics/index.html" target="_blank">rdbnomics</a> package. All the following code is written in R, thanks to the @RCT16 and the @RStu16.
+
+First, we interpolate data if needed using a cubic spline interpolation to obtain monthly data series in `mei_rawdata_interpolated.csv` (since 1980). Indeed, outlook survey in goods-producing industries, in building construction industry, in wholesaling and in services, from INSEE, are two-monthly series (5 series), quarterly series (4 series) or sometimes only the beginning of the sample is quarterly (8 series). 
+
+Second, we deseasonalize few data series using X13 : monetary aggregates, foreign trade aggregates and consumer price indexes. 
+
+Third, we transform data to obtain stationary data series since 1980 in `mei_data.xls`, based on unit root and stationarity tests. We also export databases since 1992 and since 1999 without NA at the beginning of the sample by removing several series in `mei_data_1992.xls` and `mei_data_1999.xls`.
+
+# Output and income
+
+```{r}
+immat <- rdb("INSEE/TRANSPORTS/M.IMMATRICULATION_VEHICULES.SO.SO.SO.SO.VALEUR_ABSOLUE.SO.FM.SO.UNITE.CVS-CJO.SO.SO")
+conso_households <- rdb("INSEE","CONSO-MENAGES-2014","M.CONSOMMATION_MENSUELLE_MENAGES_BIENS.BIENS-DURABLES+BIENS-FABRIQUES-AUTRES+BIENS-MANUFACTURES+EQUIPEMENT-LOGEMENT+TEXTILE+MATERIELS-TRANSPORT.VALEUR_ABSOLUE.FM.EUROS.CVS-CJO.2014")
+retail_except_cars <- rdb("INSEE/ICA-2015-COMMERCE/M.BDM.ICA_COMM.47.INDICE_VAL.FE.SO.CVS-CJO.2015")
+building_permits <- rdb("Eurostat","sts_cobp_m","M.PSQM.F_CC1+F_CC111+F_CC112.SCA.I15.FR")
+ipi <- rdb("INSEE","IPI-2015","M..IPI.SO.A10-BE+A10-CZ+A17-C1+A17-C2+A17-C3+A17-C5+CL1+CL2+A17-DE+A21-F.INDICE.FM.SO.CVS-CJO.2015")
+construction_dwellings_started <- rdb("INSEE","CONSTRUCTION-LOGEMENTS","M.CUMUL.BDM.NBRE_LOG_COM.VALEUR_ABSOLUE.CLC.0+101+102+NLCR.FM.SO.BRUT")
+capacity_utilisation <- rdb("BDF/CONJ/CONJ.M.N01.S.IN.000CZ.TUTSM000.10")
+
+output <- 
+  bind_rows(immat,conso_households,retail_except_cars,building_permits,ipi,construction_dwellings_started,capacity_utilisation) %>% 
+  select(period,value,provider_code,Frequency,Indicator,Correction,Nature,dataset_name,series_code,dataset_code,
+         `Seasonal adjustment`,`Unit of measure`,`Classification of economic activities - NACE Rev.2`,`Product type`,Activity,`Type of housing`,Adjustment,`Survey sector`,Question) %>% 
+  mutate(Correction=case_when(dataset_code=="CONJ" ~ Adjustment,
+                              is.na(Correction) ~ `Seasonal adjustment`,
+                              TRUE ~ Correction),
+         Nature=case_when(dataset_code=="CONJ" ~ "Rate",
+                          is.na(Nature) ~ `Unit of measure`,
+                          TRUE ~ Nature),
+         Indicator=case_when(is.na(Indicator) & dataset_code=="sts_cobp_m" ~ `Classification of economic activities - NACE Rev.2`,
+                             dataset_code=="CONSTRUCTION-LOGEMENTS" ~ paste(Indicator,`Type of housing`,sep=" - "),
+                             dataset_code=="CONJ" ~ paste(`Survey sector`, Question, sep=" - "),
+                             dataset_code=="CONSO-MENAGES-2014" ~ `Product type`,
+                             dataset_code %in% c("IPI-2015","ICA-2015-COMMERCE") ~ Activity,
+                             TRUE ~ Indicator)) %>% 
+  select(-`Seasonal adjustment`,-`Unit of measure`,-`Classification of economic activities - NACE Rev.2`,-`Product type`,-Activity,-`Type of housing`,-Adjustment,-`Survey sector`,-Question) %>% 
+  add_column(type="1- Output")
+```
+
+# Labor market
+
+```{r}
+unemployment_rate <- rdb("Eurostat","une_rt_m","M.SA.TOTAL+Y_LT25.PC_ACT.T.FR")
+job_vacancy <- rdb("OECD/MEI/FRA.LMJVTTNV.STSA.M")
+interim <- rdb("DARES/8-1-nombre-d-interimaires/8-1-nombre-d-interimaires.1")
+unemployment <- rdb(c("DARES/2-1-CVS-CJO-categories/fx_categorie-a_milliers_M_CVS-CJO",
+                      "DARES/2-1-CVS-CJO-categories/fx_categories-a-b-c_milliers_M_CVS-CJO",
+                      "DARES/2-1-CVS-CJO-anciennete/fx_moins-d-un-an-moins-3-mois_eff_M_CVS-CJO",
+                      "DARES/2-1-CVS-CJO-anciennete/fx_moins-d-un-an-3-a-6-mois_eff_M_CVS-CJO",
+                      "DARES/2-1-CVS-CJO-anciennete/fx_moins-d-un-an-6-a-12-mois_eff_M_CVS-CJO",
+                      "DARES/2-1-CVS-CJO-anciennete/fx_un-an-ou-plus-1-a-2-ans_eff_M_CVS-CJO"))
+
+labor <-
+  bind_rows(unemployment_rate,job_vacancy,interim,unemployment) %>% 
+  select(period,value,provider_code,Frequency,Correction=`Seasonal adjustment`,Nature=`Unit of measure`,dataset_name,dataset_code,series_code,
+         Indicator=`Age class`,Measure,Subject,series_name,Unit,Adjustment,adjustment) %>% 
+  mutate(Correction=case_when(dataset_code=="MEI" ~ Measure,
+                              dataset_code=="8-1-nombre-d-interimaires" ~ Adjustment,
+                              dataset_code %in% c("2-1-CVS-CJO-categories","2-1-CVS-CJO-anciennete") ~ adjustment,
+                              TRUE ~ Correction),
+         Nature=case_when(dataset_code=="MEI" ~ Measure,
+                          provider_code=="DARES" ~ "Milliers",
+                          TRUE ~ Nature),
+         Indicator=case_when(dataset_code=="MEI" ~ Subject,
+                             provider_code=="DARES" ~ series_name,
+                             TRUE ~ Indicator),
+         Frequency="Monthly") %>% 
+  select(-Measure,-Subject,-series_name,-Unit,-Adjustment,-adjustment) %>% 
+  add_column(type="2- Labor")
+```
+
+# Firms
+
+```{r}
+firms_birth <- rdb("INSEE/CREATIONS-ENTREPRISES/M.TYPE-ENT_PM.ENS.VALEUR_ABSOLUE.SO.FE.UNITE.BRUT")
+firm_death <- rdb("INSEE","DEFAILLANCES-ENTREPRISES","M.NOMBRE_DEFAILLANCES.AZ+BE+FZ+JZ+KZ+LZ+MN.VALEUR_ABSOLUE.FE.UNITE.BRUT")
+
+firms <-
+  bind_rows(firms_birth,firm_death) %>% 
+  select(period, value, provider_code, Frequency, Correction,dataset_name,dataset_code,series_code,
+         Indicator,`Business sector`,Nature) %>% 
+  mutate(Indicator=case_when(dataset_code=="CREATIONS-ENTREPRISES" ~ paste(Indicator,`Business sector`, sep=" - "),
+                             TRUE ~ `Business sector`)) %>% 
+  select(-`Business sector`) %>% 
+  add_column(type="3- Firms")
+```
+
+
+# Survey
+
+```{r}
+survey_households <- rdb("INSEE",
+                         "ENQ-CONJ-MENAGES",
+                         "M.CAMME_NVF+CAMME_NVP+CAMME_OA+CAMME_SFP+CAMME_SFF.NVF+NVP+OA+SFP+SFF.SOLDE_PROPORTION.FM.SO.CVS")
+survey_services <- rdb("INSEE",
+                       "ENQ-CONJ-SERV",
+                       "T+M.ECS_REPA+ECS_REPRE+ECS_CAPA_E+ECS_CAPRE_E+ECS_DEM_E.ENS.SO.SOLDE_PROPORTION.FM.POURCENT.CVS")
+survey_retail <- rdb("INSEE",
+                     "ENQ-CONJ-COM-DET",
+                     "M.ECCD_CPR_E+ECCD_EFFPRE_E+ECCD_TVEC_U+ECCD_VEPA_E.ENS.CPR_E+EFFPRE_E+TVEC_U+VEPA_E.SO.SOLDE_PROPORTION.FM.POURCENT.CVS")
+survey_wholesale <- rdb("INSEE",
+                        "ENQ-CONJ-COM-GROS",
+                        "B.ECCG_CPRE_E+ECCG_LIPAX_E+ECCG_TVEC_U+ECCG_VEPAX_E+ECCG_VEPA_E.COMMG.CPRE_E+LIPAX_E+TVEC_U+VEPAX_E+VEPA_E.SOLDE_PROPORTION.FM.POURCENT.CVS")
+survey_building <- rdb("INSEE",
+                       "ENQ-CONJ-IND-BAT",
+                       "M.ECB_AFT+ECB_APT+ECB_CCT+ECB_EFOP_EVO+ECB_TUC.ENS+SO.SOLDE_PROPORTION+PROPORTION.SO.FM.POURCENT.CVS")
+survey_industry_manuf <- rdb("INSEE",
+                             "ENQ-CONJ-ACT-IND",
+                             "T.ECAI_TDPA+ECAI_TDPRE.TDPA+TDPRE.A10-CZ.SOLDE_PROPORTION.FM.POURCENT.CVS")
+survey_industry_all <- rdb("INSEE",
+                           "ENQ-CONJ-ACT-IND",
+                           "M.ECAI_OSCD+ECAI_OSCDE+ECAI_OSSK+ECAI_PGP+ECAI_TPPA+ECAI_TPPRE.OSCD+OSCDE+OSSK+PGP+TPPA+TPPRE.A10-BE.SOLDE_PROPORTION.FM.POURCENT.CVS")
+
+survey <- 
+  bind_rows(survey_households,survey_services,survey_retail,survey_wholesale,survey_building,survey_industry_manuf,survey_industry_all) %>% 
+  select(period,value,provider_code,Frequency,Indicator,Correction,Nature,dataset_name,dataset_code,series_code) %>% 
+  mutate(Frequency=case_when(dataset_name %in% c("Outlook survey in services","Outlook survey in the building construction industry") & Frequency=="Monthly" ~ "Quarterly / Monthly",
+                             TRUE ~ Frequency)) %>% 
+  add_column(type="4- Survey")
+```
+
+# Money and credit
+
+```{r}
+m1 <- rdb("BDF/BSI1/BSI1.M.FR.N.V.M10.A.1.U2.2300.Z01.E")
+m2 <- rdb("BDF/BSI1/BSI1.M.FR.N.V.M20.A.1.U2.2300.Z01.E")
+m3 <- rdb("BDF/BSI1/BSI1.M.FR.N.V.M30.A.1.U2.2300.Z01.E")
+housingrate <- rdb("BDF/MIR1/MIR1.M.FR.B.A22.A.R.A.2254U6.EUR.N")
+loans_update <- 
+  rdb("BDF/BSI1/BSI1.M.FR.N.V.A20.A.1.U6.2200.Z01.E") %>% 
+  filter(period > "2020-08-01")
+loans <- 
+  rdb("BDF/BSI1/BSI1.M.FR.N.A.A20.A.1.U6.2200.Z01.E") %>% 
+  filter(period <= "2020-08-01") %>% 
+  mutate(series_code=unique(loans_update$series_code))
+
+credit <- bind_rows(m1,m2,m3,housingrate,loans,loans_update) %>% 
+  select(period,value,provider_code,Frequency,dataset_name,dataset_code,series_code,Adjustment,`Data type`,`Balance sheet item`,`MFI interest rate data type`,`IR business coverage`) %>% 
+  mutate(Correction=case_when(dataset_code=="BSI1" ~ Adjustment,
+                              dataset_code=="MIR1" ~ "Not seasonally adjusted"),
+         Indicator=case_when(dataset_code=="BSI1" ~ `Balance sheet item`,
+                             dataset_code=="MIR1" ~ paste(`Balance sheet item`,`IR business coverage`,sep=" - "),
+                             TRUE ~ "NA"),
+         Nature=case_when(dataset_code=="BSI1" ~ `Data type`,
+                          dataset_code=="MIR1" ~ `MFI interest rate data type`,
+                          TRUE ~ "NA")) %>% 
+  select(-c(Adjustment,`Data type`,`Balance sheet item`,`MFI interest rate data type`,`IR business coverage`)) %>% 
+  add_column(type="5- Credit")
+```
+
+# Interest rates and exchange rates
+
+```{r}
+fr_3month_interest_rate <- rdb("OECD/MEI/FRA.IR3TIB01.ST.M")
+fr_10y_interest_rate <- rdb("OECD/MEI/FRA.IRLTLT01.ST.M") %>% filter(period >= "1960-01-01")
+fr_10y_interest_rate_nasplined <- 
+  fr_10y_interest_rate %>% 
+  mutate(value=na.spline(value))
+
+fr_us_spread <- rdb("OECD","MEI","USA+FRA.IRSTCI01+IRLTLT01.ST.M")
+spread <- 
+  fr_us_spread %>% 
+  select(period,value,SUBJECT,provider_code,Frequency,dataset_code,dataset_name,Country,Measure,LOCATION) %>% 
+  spread(SUBJECT,value) %>% 
+  arrange(Country) %>% 
+  mutate(value=IRLTLT01-IRSTCI01) %>%
+  mutate(Subject="Long-term interest rate spread",
+         series_code=paste0(LOCATION,".LT.SPREAD"))
+spread_usa <- 
+  spread %>% 
+  filter(LOCATION=="USA")
+spread_fra <-
+  spread %>% 
+  filter(LOCATION=="FRA",
+         period >= "1960-01-01")
+test <- spread_fra %>% filter(period==max(period)) %>% pull(value)
+if (is.na(test)) {
+  spread_fra %<>% filter(period < max(period)) 
+}
+spread_fra_nasplined <- 
+  spread_fra %>% 
+  mutate(value=na.spline(value))
+
+exr <- rdb("IMF","IFS","M.CN+JP+GB+US+CH.ENEA_XDC_EUR_RATE+ENECUA_XDC_XEU_RATE")
+exr2 <- exr %>% 
+  na.omit() %>% 
+  spread(INDICATOR,value) %>% 
+  mutate(value=coalesce(ENEA_XDC_EUR_RATE,ENECUA_XDC_XEU_RATE)) %>% 
+  mutate(Indicator="Exchange Rates, Domestic Currency per ECU/Euro, Period Average, Rate",
+         series_code=paste0("M.",REF_AREA,".ENEA_XDC_EUR_RATE"))
+
+effective_exchange_rate_euro <- rdb("BIS","eer","M.N+R.N.XM")
+
+rates <- bind_rows(fr_3month_interest_rate,fr_10y_interest_rate_nasplined,spread_usa,spread_fra_nasplined,exr2,effective_exchange_rate_euro) %>% 
+  select(period,value,provider_code,Frequency,dataset_name,dataset_code,series_code,Indicator,`Reference Area`,Basket,`Reference area`,Subject,Measure,Country,Type) %>% 
+  mutate(Indicator=case_when(dataset_code=="IFS" ~ paste(`Reference Area`,Indicator,sep = " - "),
+                             dataset_code=="eer" ~ `Reference area`,
+                             dataset_code=="MEI" ~ paste(Country,Subject,sep= " - "),
+                             TRUE ~ "NA"),
+         Correction="Not seasonally adjusted",
+         Nature=case_when(dataset_code=="eer" ~ paste(Type,Basket,sep=" - "),
+                          dataset_code=="MEI" ~ Measure,
+                          dataset_code=="IFS" ~ "Period Average, rate",
+                          TRUE ~ "NA")) %>% 
+  select(-c(`Reference Area`,Basket,`Reference area`,Subject,Measure,Country,Type)) %>% 
+  add_column(type="6- Rates")
+```
+
+# Prices
+
+```{r}
+gold_price <- rdb("LBMA/gold/gold_M_USD_PM")
+oil_price <- rdb("IMF/PCPS/M.W00.POILBRE.USD")
+primary_commodity_price <- rdb("IMF/PCPS/M.W00.PALLFNF.IX")
+
+cpi_all <- rdb("INSEE/IPC-2015/M.IPC.SO.00.SO.INDICE.ENSEMBLE.FE.SO.BRUT.2015")
+cpi_sector <- 
+  rdb("INSEE","IPC-2015","M.IPC.SO.SO.4004+4037+4007+4000+4009.INDICE.ENSEMBLE.FE.SO.BRUT.2015") %>% 
+  filter(!str_detect(series_code,".FALSE")) %>% 
+  filter(!str_detect(series_code,".2015.SO"))
+
+prices <- 
+  bind_rows(gold_price,oil_price,primary_commodity_price,cpi_all,cpi_sector) %>% 
+  select(period,value,provider_code,Frequency,`COICOP classification, 2016`,`Products grouping`,Correction,Nature,dataset_name,dataset_code,Indicator,Unit,`Unit of Measure`,Commodity,`Reference Area`,series_code) %>%
+  mutate(Indicator=case_when(`COICOP classification, 2016`!="Non applicable" & dataset_code=="IPC-2015" ~ `COICOP classification, 2016`,
+                             `COICOP classification, 2016`=="Non applicable" ~ `Products grouping`,
+                             dataset_code %in% c("PCPS","COMMP") ~ paste(Commodity,`Reference Area`,sep=" - "),
+                             dataset_code=="gold" ~ "gold",
+                             TRUE ~ Indicator),
+         Correction=case_when(dataset_code %in% c("gold","COMMP","PCPS") ~ "Not seasonally adjusted",
+                              TRUE ~ Correction),
+         Nature=case_when(dataset_code=="gold" ~ Unit,
+                          dataset_code=="PCPS" ~ `Unit of Measure`,
+                          dataset_code=="COMMP" ~ "Index",
+                          TRUE ~ Nature)) %>% 
+  select(-`Products grouping`,-`COICOP classification, 2016`,-Unit,-`Unit of Measure`,-Commodity,-`Reference Area`) %>% 
+  add_column(type="7- Prices")
+```
+
+# Stock market
+
+```{r}
+share_prices <- rdb("OECD","MEI","DEU+EA19+FRA+JPN+USA+GBR.SPASTT01.IXOB.M")
+#nikkei <- rdb("ECB/FM/M.JP.JPY.DS.EI.JAPDOWA.HSTA")
+#eurostoxx50 <- rdb("ECB/FM/M.U2.EUR.DS.EI.DJES50I.HSTA")
+```
+
+```{r}
+#https://ww2.cboe.com/products/vix-index-volatility/vix-options-and-futures/vix-index/vix-historical-data
+#url <- "https://ww2.cboe.com/publish/scheduledtask/mktdata/datahouse/vixarchive.xls"
+url <- "https://cdn.cboe.com/resources/us/indices/vixarchive.xls"
+download.file(url,
+              destfile = "vixarchive.xls",
+              mode="wb")
+vixarchive <- 
+  read_xls("vixarchive.xls",skip = 1) %>% 
+  mutate(Date=as.Date(Date)) %>% 
+  mutate_if(is.character,as.numeric)
+
+#url <- "https://ww2.cboe.com/publish/scheduledtask/mktdata/datahouse/vixcurrent.csv"
+url <- "https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv"
+download.file(url,
+              destfile = "vixcurrent.csv",
+              mode="wb")
+vixcurrent <- 
+  read_csv("vixcurrent.csv") %>% 
+  rename(Date=DATE)
+vixcurrent2 <- vixcurrent %>% mutate(Date=as.Date(Date,format="%m/%d/%Y"))
+
+# vixd <-
+#   bind_rows(vixarchive,vixcurrent2) %>% 
+#   vixcurrent2 %>% 
+#   mutate(`VIX Open`=case_when(is.na(`VIX Open`) ~ `VIX Close`,
+#                               TRUE ~ `VIX Open`)) %>% 
+#   mutate(value=(`VIX Open`+`VIX Close`)/2) %>% 
+#   select(period=Date,value)
+
+vixd <- 
+  vixcurrent2 %>% 
+  mutate(`OPEN`=case_when(is.na(`OPEN`) ~ `CLOSE`,
+                              TRUE ~ `OPEN`)) %>%
+  mutate(value=(`OPEN`+`CLOSE`)/2) %>%
+  select(period=Date,value)
+
+vixm <- 
+  vixd %>% 
+  mutate(month=month(period),
+         year=year(period)) %>% 
+  group_by(month,year) %>% 
+  summarise(value=mean(value,na.rm = T)) %>% 
+  ungroup() %>% 
+  mutate(period=as.Date(paste0(year,"-",month,"-01"))) %>% 
+  arrange(period) %>% 
+  select(-month,-year) %>% 
+  mutate(provider_code="CBOE",dataset_code="VIX",Frequency="Monthly",Nature="Index (mean between Open and Close)",dataset_name="VIX",Indicator="US stock market",series_code="vix")
+```
+
+```{r}
+url <- "http://www.econ.yale.edu/~shiller/data/ie_data.xls"
+download.file(url,
+              destfile = "per.xls",
+              mode="wb")
+
+per <- 
+  read_xls("per.xls",sheet = "Data", skip = 7) %>% 
+  select(period=Date,value=CAPE)
+date <- seq(as.Date("1871-01-01"),by="month",length.out = nrow(per))
+per_final <-
+  per %>% 
+  mutate(period=date,
+         value=as.numeric(value)) %>% 
+  na.omit() %>% 
+  mutate(provider_code="Shiller",dataset_code="PER",Frequency="Monthly",Nature="ratio",dataset_name="PER (Cyclically Adjusted - CAPE)",Indicator="US stock market",series_code="per")
+```
+
+```{r}
+stock_market <-
+  bind_rows(share_prices,vixm,per_final) %>% 
+  select(period,value,provider_code,Frequency,Nature,Measure,Indicator,Country,dataset_code,dataset_name,series_code) %>% 
+  mutate(Correction="Not seasonally adjusted",
+         Nature=case_when(is.na(Nature) ~ Measure,
+                          TRUE ~ Nature),
+         Indicator=case_when(is.na(Indicator) ~ Country,
+                             TRUE ~ Indicator)) %>% 
+  select(-Country,-Measure) %>% 
+  add_column(type="8- StockMarket")
+```
+
+# Trade
+
+```{r}
+trade_raw <- rdb("INSEE","COM-EXT","M.E+I.A10-AZ+A10-BE+A10-CZ.INDICE_PRIX+INDICE_VOL.FM.190.SO.BRUT.2005")
+
+trade <- 
+  trade_raw %>% 
+  select(period,value,provider_code,Frequency,Indicator,Correction,Nature,dataset_name,dataset_code,series_code,Activity) %>% 
+  mutate(Indicator=paste(Indicator,Activity,sep=", ")) %>% 
+  select(-Activity) %>% 
+  add_column(type="9- Trade")
+```
+
+# United States
+
+```{r}
+us_retail <- rdb("OECD/MEI/USA.SLRTTO01.IXOBSA.M")
+us_employment <- rdb("BLS/ce/CES0500000001")
+us_unemploymentrate <- rdb("BLS/ln/LNS14000000")
+us_ipi <- rdb("FED/G17_IP_SPECIAL_AGGREGATES/IP.B50001.S")
+
+us_pmi_old <- read.csv("ISM-MAN_PMI.csv") %>% 
+  mutate(period=as.Date(period))
+us_pmi_new <- rdb("ISM/pmi/pm")
+us_pmi <- 
+  us_pmi_old %>% 
+  filter(period<min(us_pmi_new$period)) %>% 
+  bind_rows(us_pmi_new) %>% 
+  select(period,value,provider_code,dataset_code,series_code,Frequency,dataset_name) %>% 
+  mutate_if(is.character,~ unique(na.omit(.)))
+
+us <- 
+  bind_rows(us_retail,us_employment,us_unemploymentrate,us_ipi,us_pmi) %>% 
+  select(period,value,provider_code,Frequency,dataset_name,dataset_code,series_code,Subject,Measure,Lfst,`Data Type`,Industry,`Seasonal Adjustment`,`Series Code`,Seasonal) %>% 
+  mutate(Indicator=case_when(dataset_code=="MEI" ~ Subject,
+                             dataset_code=="ln" ~ Lfst,
+                             dataset_code=="ce" ~ Industry,
+                             dataset_code=="G17_IP_SPECIAL_AGGREGATES" ~ `Series Code`,
+                             provider_code=="ISM" ~ dataset_name,
+                             TRUE ~ "NA"),
+         Nature=case_when(dataset_code=="MEI" ~ Measure,
+                          dataset_code=="ce" ~ `Data Type`,
+                          dataset_code=="ln" ~ "Rate",
+                          dataset_code %in% c("G17_IP_SPECIAL_AGGREGATES","pmi") ~ "Index",
+                          TRUE ~ "NA"),
+         Correction=case_when(dataset_code=="G17_IP_SPECIAL_AGGREGATES" ~ `Seasonal Adjustment`,
+                              provider_code %in% c("OECD","ISM") ~ "Seasonally adjusted",
+                              dataset_code %in% c("ce","ln") ~ Seasonal,
+                              TRUE ~ "NA"),
+         Frequency=case_when(provider_code=="BLS" ~ "Monthly",
+                             TRUE ~ Frequency),
+         dataset_name=case_when(provider_code=="ISM" ~ "PMI",
+                                TRUE ~ dataset_name)) %>% 
+  select(-c(Subject,Measure,Lfst,`Data Type`,Industry,`Seasonal Adjustment`,`Series Code`,Seasonal)) %>% 
+  add_column(type="9a- US")
+```
+
+# Germany
+
+```{r}
+deu_ipi <- rdb("BUBA/BBDE1/M.DE.Y.BAA1.A2P300000.G.C.I15.A")
+```
+
+```{r}
+page <- read_html("https://www.ifo.de/en/umfragen/time-series")
+excel_links <- 
+  html_nodes(page, xpath=".//a[contains(@href, '.xlsx')]") %>% 
+  html_attr("href") %>% 
+  sprintf("https://www.ifo.de%s", .) 
+  
+url <-
+  data.frame(url=excel_links) %>% 
+  filter(str_detect(url,"gsk-e")) %>% 
+  pull()
+  
+download.file(url[1],
+              destfile = "ifo.xlsx",
+              mode="wb")
+
+ifo_raw <- 
+  read_excel("ifo.xlsx",sheet = "Sectors",skip = 7) %>% 
+  select(1,3:4) %>% 
+  na.omit()
+colnames(ifo_raw) <- c("period","Industry and Trade - Business situation","Industry and Trade - Business expectations")
+date <- seq(as.Date("1991-01-01"),by="month",length.out = nrow(ifo_raw))
+ifo <-
+  ifo_raw %>% 
+  mutate(period=date) %>% 
+  gather(Indicator,value,-period) %>% 
+  mutate(provider_code="IFO",dataset_code="IFO",Frequency="Monthly",
+         Nature="Index",dataset_name="IFO Business Climate Germany and its components",
+         series_code=paste(provider_code,Indicator,sep = " - "),Correction="Seasonally adjusted")
+```
+
+```{r}
+url <- "http://ftp.zew.de/pub/zew-docs/div/konjunktur.xls"
+download.file(url,
+              destfile = "zew.xls",
+              mode="wb")
+
+zew_raw <-
+  read_excel("zew.xls") %>%
+  select(1:3) %>% 
+  filter(Date != "Mean:") %>% 
+  rename(period=Date)
+date <- seq(as.Date("1991-12-01"),by="month",length.out=nrow(zew_raw))
+zew <-
+  zew_raw %>% 
+  mutate(period=date) %>% 
+  gather(Indicator,value,-period) %>% 
+  mutate(provider_code="ZEW",dataset_code="ZEW",Frequency="Monthly",Nature="Balances",
+         dataset_name="ZEW Indicator of Economic Sentiment",
+         series_code=paste(provider_code,Indicator,sep = " - "),
+         Correction="Seasonally adjusted")
+```
+
+```{r}
+deu <-
+  bind_rows(deu_ipi,ifo,zew) %>%
+  select(period,value,Frequency,provider_code,dataset_code,Nature,dataset_name,series_code,Indicator,Correction,`Short-term economic indicators Concept (Germany)`,`Short-term economic indicators Classification (Germany)`,`Adjustment (BBk)`,`Price or unit reference`,`Frequency (BBk)`) %>% 
+  mutate(Indicator=case_when(provider_code=="BUBA" ~ paste(`Short-term economic indicators Concept (Germany)`,`Short-term economic indicators Classification (Germany)`,sep = " - "),
+                             TRUE ~ Indicator),
+         Nature=case_when(provider_code=="BUBA" ~ `Price or unit reference`,
+                          TRUE ~ Nature),
+         Correction=case_when(provider_code=="BUBA" ~ `Adjustment (BBk)`,
+                              TRUE ~ Correction),
+         Frequency=case_when(provider_code=="BUBA" ~ `Frequency (BBk)`,
+                             TRUE ~ Frequency)) %>% 
+  select(-c(`Short-term economic indicators Concept (Germany)`,`Short-term economic indicators Classification (Germany)`,`Adjustment (BBk)`,`Price or unit reference`,`Frequency (BBk)`)) %>% 
+  add_column(type="9b- Germany")
+```
+
+# Merge and transform
+
+```{r}
+df_mei <-
+  bind_rows(output,labor,firms,survey,credit,rates,trade,prices,stock_market,us,deu)
+```
+
+## Interpolate
+
+```{r}
+df_mei_quarterly <- 
+  df_mei %>% 
+  filter(Frequency=="Quarterly") %>% 
+  mutate(period= period %m+% months(2))
+
+df_mei_quarterly_services <-
+  df_mei_quarterly %>%
+  filter(dataset_name=="Outlook survey in services") %>% 
+  select(series_code,value,period) %>% 
+  spread(series_code,value)
+df_mei_monthly_services <- 
+  data.frame(period=seq(min(df_mei_quarterly_services$period),max(df_mei_quarterly_services$period),by="month")) %>% 
+  left_join(df_mei_quarterly_services) %>% 
+  gather(series_code,value,-period)
+
+df_mei_quarterly_industry <-
+  df_mei_quarterly %>%
+  filter(dataset_name=="Outlook survey in goods-producing industries") %>% 
+  select(series_code,value,period) %>% 
+  spread(series_code,value)
+df_mei_monthly_industry <-
+  data.frame(period=seq(min(df_mei_quarterly_industry$period),max(df_mei_quarterly_industry$period),by="month")) %>% 
+  left_join(df_mei_quarterly_industry) %>% 
+  gather(series_code,value,-period)
+
+df_mei_quarterlymonthly <-
+  df_mei %>% 
+  filter(Frequency== "Quarterly / Monthly") %>% 
+  select(series_code,value,period)
+
+df_mei_twomonthly_wholesale <- 
+  df_mei %>% 
+  filter(Frequency=="Two-monthly") %>% 
+  select(series_code,value,period) %>% 
+  spread(series_code,value)
+
+df_mei_monthly_wholesale <-
+  data.frame(period=seq(min(df_mei_twomonthly_wholesale$period),max(df_mei_twomonthly_wholesale$period),by="month")) %>% 
+  left_join(df_mei_twomonthly_wholesale) %>% 
+  gather(series_code,value,-period)
+
+df_mei_naspline <- 
+  bind_rows(df_mei_monthly_services,
+            df_mei_monthly_industry,
+            df_mei_quarterlymonthly,
+            df_mei_monthly_wholesale) %>% 
+  group_by(series_code) %>% 
+  mutate(value=na.spline(value))
+
+# check
+# titi <- df_mei %>% filter(Frequency != "Monthly") %>% select(period,value,series_code) %>% add_column(interpol="no")
+# tutu <- df_mei_naspline %>% add_column(interpol="yes")
+# ggplot(data = bind_rows(tutu,titi),aes(period,value,color=interpol))+
+#   geom_point()+
+#   facet_wrap(~series_code,scales = "free_y",ncol=2)
+
+df_mei_novalue <-
+  df_mei %>% 
+  select(-period,-value) %>% 
+  unique()
+
+df_mei_naspline_all <-
+  df_mei_naspline %>% 
+  left_join(df_mei_novalue)
+
+df_mei_interpolated <-
+  df_mei %>% 
+  filter(Frequency == "Monthly") %>% 
+  bind_rows(df_mei_naspline_all)
+```
+
+## Summary table
+
+```{r}
+df_mei_table <- 
+  df_mei_interpolated %>%  
+  group_by(type,dataset_name,Indicator,Frequency,Correction,Nature,provider_code,dataset_code,series_code) %>% 
+  summarise(start_date=min(period),end_date=max(period),Sparkline=spk_chr(value,type="line",height = 40, width = 120)) %>% 
+  arrange(type,provider_code,dataset_name,Frequency) %>% 
+  ungroup() %>% 
+  mutate(Source=text_spec("link",
+                          link = paste("https://db.nomics.world",provider_code,dataset_code,series_code,sep = "/"), 
+                          color = "#333333",escape = F,extra_css="text-decoration:none")) %>% 
+  mutate(Source=case_when(dataset_name=="VIX" ~ text_spec("link",
+                                                          link = "http://www.cboe.com/products/vix-index-volatility/vix-options-and-futures/vix-index/vix-historical-data", 
+                                                          color = "#333333",escape = F,extra_css="text-decoration:none"),
+                          dataset_name=="PER (Cyclically Adjusted - CAPE)" ~ text_spec("link",
+                                                                                       link = "http://www.econ.yale.edu/~shiller/data.htm", 
+                                                                                       color = "#333333",escape = F,extra_css="text-decoration:none"),
+                          provider_code=="IFO" ~ text_spec("link",
+                                                           link = "https://www.ifo.de/en", 
+                                                           color = "#333333",escape = F,extra_css="text-decoration:none"),
+                          provider_code=="ZEW" ~ text_spec("link",
+                                                           link = "http://ftp.zew.de/pub/zew-docs/div/konjunktur.xls", 
+                                                           color = "#333333",escape = F,extra_css="text-decoration:none"),
+                          series_code=="USA.LT.SPREAD" ~ paste0(text_spec("link",
+                                                                          link = "https://db.nomics.world/OECD/MEI/USA.IRLTLT01.ST.M", 
+                                                                          color = "#333333",escape = F,extra_css="text-decoration:none")," - ",
+                                                                text_spec("link",
+                                                                          link = "https://db.nomics.world/OECD/MEI/USA.IRSTCI01.ST.M", 
+                                                                          color = "#333333",escape = F,extra_css="text-decoration:none")),
+                          series_code=="FRA.LT.SPREAD" ~ paste0(text_spec("link",
+                                                                          link = "https://db.nomics.world/OECD/MEI/FRA.IRLTLT01.ST.M", 
+                                                                          color = "#333333",escape = F,extra_css="text-decoration:none")," - ",
+                                                                text_spec("link",
+                                                                          link = "https://db.nomics.world/OECD/MEI/FRA.IRSTCI01.ST.M", 
+                                                                          color = "#333333",escape = F,extra_css="text-decoration:none")),
+                          TRUE ~ Source),
+         start_date=case_when(Frequency %in% c("Monthly","Two-monthly") & !dataset_name %in% c("Outlook survey in services","Outlook survey in the building construction industry") ~ paste0(year(start_date),"M",month(start_date)),
+                              Frequency=="Quarterly / Monthly" & dataset_name=="Outlook survey in services" ~ paste0(year(start_date),"Q",quarter(start_date),"-2000Q2"),
+                              Frequency=="Quarterly / Monthly" & dataset_name=="Outlook survey in the building construction industry" ~ paste0(year(start_date),"Q",quarter(start_date),"-1993Q3"),
+                              Frequency=="Quarterly" ~ paste0(year(start_date),"Q",quarter(start_date)),
+                              TRUE ~ paste(start_date)),
+         end_date=case_when(Frequency %in% c("Monthly","Two-monthly") & !dataset_name %in% c("Outlook survey in services","Outlook survey in the building construction industry") ~ paste0(year(end_date),"M",month(end_date)),
+                            Frequency=="Quarterly / Monthly" & dataset_name=="Outlook survey in services" ~ paste0("2000M6-",year(end_date),"M",month(end_date)),
+                            Frequency=="Quarterly / Monthly" & dataset_name=="Outlook survey in the building construction industry" ~ paste0("1993M9-",year(end_date),"M",month(end_date)),
+                            Frequency=="Quarterly" ~ paste0(year(end_date),"Q",quarter(end_date)),
+                            TRUE ~ paste(end_date))) %>% 
+  unite("Dates",c(start_date,end_date),remove = TRUE,sep=" - ") %>% 
+  rename(Type=type,
+         Dataset=dataset_name,
+         Provider=provider_code) %>% 
+  group_by(Type) %>% 
+  mutate(Code=paste(gsub(".*- ","",Type),row_number(),sep="_")) %>% 
+  ungroup() %>% 
+  select(-Type)
+
+mei_dt <- 
+  df_mei_table %>% 
+  select(-series_code,-dataset_code) %>% 
+  datatable(rownames = F, escape = FALSE, 
+            caption = tags$caption(style = 'font-size:150% ;',"Description of the MEI database"),
+            class = "hover compact responsive",
+            options = list(pageLength=length(unique(df_mei$series_code)), 
+                           columnDefs = list(list(className = 'dt-center', targets = "_all")),
+                           dom='t', 
+                           fnDrawCallback = htmlwidgets::JS(
+                  '
+function(){
+  HTMLWidgets.staticRender();
+}
+'
+                ))) %>%  
+  spk_add_deps()
+mei_dt
+saveWidget(mei_dt,"mei_dt.html")
+```
+
+```{r}
+series_Code <-
+  df_mei_table %>% 
+  select(series_code,Code) %>% 
+  unique()
+
+mei_rawdata_interpolated <- 
+  df_mei_interpolated %>%
+  filter(year(period)>=1980) %>%
+  select(series_code,period,value) %>%
+  left_join(series_Code) %>% 
+  select(-series_code) %>% 
+  mutate(period=as.Date(paste0(year(period),"-",month(period,label = F),"-01"))) %>% 
+  spread(Code,value) %>% 
+  arrange(period)
+
+mei_rawdata_interpolated %>%
+  write.csv("mei_rawdata_interpolated.csv",row.names = F)
+```
+
+## Transformation
+
+Before applying stationarity and unit root tests, we must deseasonalize few data series : monetary aggregates, foreign trade aggregates and consumer price indexes.
+
+```{r}
+mei2deseason <- 
+  mei_rawdata_interpolated %>% 
+  select(Credit_2:Credit_5,starts_with(c("Prices_","Trade_","Firms_")))
+
+mei_deseasoned <-
+  mei2deseason %>% 
+  map_dfr(function(x) {
+    tsx <- ts(x,frequency = 12,start=c(1980,1))
+    tssa <- seas(tsx,na.action=na.exclude,pickmdl="") %>% final() %>% as.numeric()
+  })
+
+mei_data_deseasoned <- 
+  mei_rawdata_interpolated %>% 
+  select(-Credit_2,-Credit_3,-Credit_4,-Credit_5,-starts_with(c("Prices_","Trade_","Firms_"))) %>% 
+  bind_cols(mei_deseasoned) %>% 
+  select(order(names(.)))
+
+mei2test <- 
+  mei_data_deseasoned %>% 
+  select(-period)
+```
+
+
+```{r}
+kpsstest_mu <- 
+  mei2test %>% 
+  map(unitroot_kpss,type="mu",lags="long") %>% 
+  data.frame(type="mu") %>% 
+  filter(row.names(.)=="kpss_pvalue") %>% 
+  gather(Code,kpss_pvalue,-type)
+kpsstest_tau <- 
+  mei2test %>% 
+  map(unitroot_kpss,type="tau",lags="long") %>% 
+  data.frame(type="tau") %>% 
+  filter(row.names(.)=="kpss_pvalue") %>% 
+  gather(Code,kpss_pvalue,-type)
+kpsstest <-
+  bind_rows(kpsstest_mu,kpsstest_tau) %>% 
+  pivot_wider(names_from=type,
+              values_from=kpss_pvalue,
+              names_prefix="KPSS pvalue: ")
+```
+
+```{r}
+pptest_ct <- 
+  mei2test %>% 
+  map(unitroot_pp,model="constant",lags="long") %>% 
+  data.frame(model="constant") %>% 
+  filter(row.names(.)=="pp_pvalue") %>% 
+  gather(Code,pp_pvalue,-model)
+pptest_td <- 
+  mei2test %>% 
+  map(unitroot_pp,model="trend",lags="long") %>% 
+  data.frame(model="trend") %>% 
+  filter(row.names(.)=="pp_pvalue") %>% 
+  gather(Code,pp_pvalue,-model)
+pptest <-
+  bind_rows(pptest_ct,pptest_td) %>% 
+  pivot_wider(names_from=model,
+              values_from=pp_pvalue,
+              names_prefix="PP pvalue: ")
+```
+
+```{r}
+stationarity_test <- 
+  kpsstest %>% 
+  left_join(pptest) %>% 
+  mutate_if(is.numeric,~round(.,3))
+```
+
+```{r}
+difflog <- 
+  mei_data_deseasoned %>% 
+  select(starts_with("Output_"),
+         Labor_1:Labor_7,Labor_10,
+         Credit_2:Credit_5,
+         Rates_1:Rates_7,
+         starts_with("Prices_"),
+         starts_with("Trade_"),
+         starts_with("Firms"),
+         StockMarket_2:StockMarket_7,
+         US_1,US_3,US_5,
+         Germany_1,Germany_2,Germany_3) %>% 
+  select(-Output_1,-Output_9,-Rates_10,-Rates_11) %>%
+  map_dfr(~ log(.)-log(lag(.))) %>% 
+  mutate(period=mei_data_deseasoned$period) %>% 
+  pivot_longer(-period,names_to="Code",values_to="value") %>% 
+  mutate(Transformation="(1-L)log")
+diff <- 
+  mei_data_deseasoned %>% 
+  select(Labor_8,Labor_9,
+         Output_1,
+         Survey_1,Survey_2,Survey_3,Survey_4,Survey_5,
+         Survey_23,Survey_24,Survey_25,Survey_26,Survey_27,
+         Credit_1,
+         Rates_8,Rates_9,
+         StockMarket_8,
+         US_2,
+         Germany_4) %>% 
+  map_dfr(~ .-lag(.)) %>% 
+  mutate(period=mei_data_deseasoned$period) %>% 
+  pivot_longer(-period,names_to="Code",values_to="value") %>% 
+  mutate(Transformation="(1-L)")
+nothing <-
+  mei_data_deseasoned %>% 
+  select(Output_9,
+         Survey_6,Survey_7,Survey_8,Survey_9,starts_with("Survey_1"),starts_with("Survey_2"),starts_with("Survey_3"),
+         Rates_10,Rates_11,
+         StockMarket_1,
+         US_4,
+         Germany_5) %>% 
+  select(-Survey_1,-Survey_2,-Survey_3,-Survey_23,-Survey_24,-Survey_25,-Survey_26,-Survey_27) %>% 
+  mutate(period=mei_data_deseasoned$period) %>% 
+  pivot_longer(-period,names_to="Code",values_to="value") %>% 
+  mutate(Transformation="no")
+
+mei_data_transformed <-
+  bind_rows(difflog,diff,nothing)
+
+code_spk_transform <-
+  mei_data_transformed %>%  
+  select(-Transformation) %>% 
+  group_by(Code) %>% 
+  summarise(`Sparkline (transformed)`=spk_chr(value,type="line",height = 40, width = 120))
+
+code_spk_interpolated <- 
+  mei_data_deseasoned %>% 
+  gather(Code,value) %>% 
+  group_by(Code) %>% 
+  summarise(`Sparkline (since 1980)`=spk_chr(value,type="line",height = 40, width = 120))
+
+code_transform <-
+  mei_data_transformed %>% 
+  select(Code,Transformation) %>% 
+  unique()
+```
+
+```{r}
+transformed_mei2test <- 
+  mei_data_transformed %>% 
+  select(-Transformation) %>% 
+  pivot_wider(names_from=Code,values_from=value) %>% 
+  select(-period)
+
+transformed_pptest <- 
+  transformed_mei2test %>% 
+  map(unitroot_pp,model="constant",lags="long") %>% 
+  data.frame() %>% 
+  filter(row.names(.)=="pp_pvalue") %>% 
+  gather(Code,`PP pvalue (transformed)`) %>% 
+  mutate_if(is.numeric,~round(.,3))
+
+transformed_kpsstest <- 
+  transformed_mei2test %>% 
+  map(unitroot_kpss,type="mu",lags="long") %>% 
+  data.frame() %>% 
+  filter(row.names(.)=="kpss_pvalue") %>% 
+  gather(Code,`KPSS pvalue (transformed)`) %>% 
+  mutate_if(is.numeric,~round(.,3))
+```
+
+* For KPSS tests, stationarity is rejected at 1% (red), 5% (pink) or not rejected (green).
+
+* For PP tests, unit root is rejected at 1% (green), 5% (light green) or not rejected (red). 
+
+```{r}
+mei_dt_utest <- 
+  df_mei_table %>% 
+  select(-Sparkline) %>% 
+  left_join(code_spk_interpolated) %>% 
+  left_join(stationarity_test) %>% 
+  left_join(code_transform) %>% 
+  left_join(code_spk_transform) %>% 
+  left_join(transformed_kpsstest) %>% 
+  left_join(transformed_pptest) %>% 
+  select(-series_code,-dataset_code,-Frequency,-Correction,-Source,-Dates) %>% 
+  datatable(rownames = F, escape = FALSE, 
+            caption = tags$caption(style = 'font-size:150% ;',"Stationarity tests and transformation of data series (since 1980)"),
+            class = "hover compact responsive",
+            options = list(pageLength=length(unique(df_mei$series_code)), 
+                           columnDefs = list(list(className = 'dt-center', targets = "_all")),
+                           dom='t', 
+                           fnDrawCallback = htmlwidgets::JS(
+                  '
+function(){
+  HTMLWidgets.staticRender();
+}
+'
+                ))) %>%  
+  spk_add_deps() %>% 
+  formatStyle(
+    c('KPSS pvalue: mu','KPSS pvalue: tau','KPSS pvalue (transformed)'),
+    backgroundColor = styleInterval(c(0.01,0.05), c('Crimson','LightPink','SeaGreen'))
+  ) %>% 
+  formatStyle(
+    c('PP pvalue: constant','PP pvalue: trend','PP pvalue (transformed)'),
+    backgroundColor = styleInterval(c(0.01,0.05), c('SeaGreen','DarkSeaGreen','Crimson'))
+  )
+mei_dt_utest
+saveWidget(mei_dt_utest,"mei_dt_utest.html")
+```
+
+# Export
+
+## The whole database
+
+```{r}
+gdp_raw <- rdb("INSEE/CNT-2014-PIB-EQB-RF/T.CNT-EQUILIBRE_PIB.SO.PIB.SO.VALEUR_ABSOLUE.FE.L.EUROS.CVS-CJO")
+
+gdpq <-
+  gdp_raw %>% 
+  select(period,value) %>% 
+  mutate(value=(value/lag(value)-1)*100) %>% 
+  filter(year(period)>=1980) %>% 
+  rename(PIB=value,date=period)
+```
+
+```{r}
+mei_data_transformed2 <-
+  mei_data_transformed %>%
+  select(-Transformation) %>% 
+  spread(Code,value) %>% 
+  arrange(period) %>% 
+  rename(date=period) %>% 
+  select(order(names(.))) %>% 
+  select(date,everything()) %>%  
+  filter(date<="2021-06-01")
+```
+
+```{r}
+delai2 <- 
+  mei_data_transformed2 %>% 
+  filter(year(date)>2019) %>% 
+  select(-date) %>% 
+  map_dfr(function(x) {
+    sum(is.na(x))
+  }) %>% 
+  gather("code","delai") %>% 
+  arrange(code) %>% 
+  select(2)
+```
+
+The `delai` vector gives the number of `NA` at the end of each data series.
+
+```{r}
+write.xlsx(as.data.frame(gdpq),"mei_data.xls",sheetName = "endog",row.names = F)
+write.xlsx(as.data.frame(mei_data_transformed2),"mei_data.xls",sheetName = "exog",append = T,row.names = F)
+write.xlsx(as.data.frame(delai2),"mei_data.xls",sheetName = "delai",append = T,row.names = F)
+```
+
+## Database since 1999 without NA
+
+```{r}
+na_1999 <-
+  mei_data_transformed2 %>% 
+  filter(date=="1999-02-01") %>% 
+  gather(var,value,-date) %>% 
+  filter(is.na(value))
+
+mei_data_transformed_1999 <-
+  mei_data_transformed2 %>% 
+  select(-na_1999$var) %>% 
+  filter(date >= "1999-02-01")
+
+delai_1999 <- 
+  mei_data_transformed_1999 %>% 
+  filter(year(date)>2019) %>% 
+  select(-date) %>% 
+  map_dfr(function(x) {
+    sum(is.na(x))
+  }) %>% 
+  gather("code","delai") %>% 
+  arrange(code) %>% 
+  select(2)
+
+write.xlsx(as.data.frame(gdpq),"mei_data_1999.xls",sheetName = "endog",row.names = F)
+write.xlsx(as.data.frame(mei_data_transformed_1999),"mei_data_1999.xls",sheetName = "exog",append = T,row.names = F)
+write.xlsx(as.data.frame(delai_1999),"mei_data_1999.xls",sheetName = "delai",append = T,row.names = F)
+```
+
+To obtain a database since 1999 without NA at the beginning of the sample, we remove `r nrow(na_1999)` series : `r na_1999$var`. We export it in `mei_data_1999.xls`.
+
+
+## Database since 1992 without NA
+
+```{r}
+na_1992 <-
+  mei_data_transformed2 %>% 
+  filter(date=="1992-01-01") %>% 
+  gather(var,value,-date) %>% 
+  filter(is.na(value))
+
+mei_data_transformed_1992 <-
+  mei_data_transformed2 %>% 
+  select(-na_1992$var) %>% 
+  filter(date >= "1992-01-01")
+
+delai_1992 <- 
+  mei_data_transformed_1992 %>% 
+  filter(year(date)>2019) %>% 
+  select(-date) %>% 
+  map_dfr(function(x) {
+    sum(is.na(x))
+  }) %>% 
+  gather("code","delai") %>% 
+  arrange(code) %>% 
+  select(2)
+
+write.xlsx(as.data.frame(gdpq),"mei_data_1992.xls",sheetName = "endog",row.names = F)
+write.xlsx(as.data.frame(mei_data_transformed_1992),"mei_data_1992.xls",sheetName = "exog",append = T,row.names = F)
+write.xlsx(as.data.frame(delai_1992),"mei_data_1992.xls",sheetName = "delai",append = T,row.names = F)
+```
+
+To obtain a database since 1992 without NA at the beginning of the sample, we remove `r nrow(na_1992)` series : all the trade series and `r na_1992 %>% filter(!str_detect(var,"Trade_")) %>% pull(var)`. We export it in `mei_data_1992.xls`.
+
+

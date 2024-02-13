@@ -1,0 +1,161 @@
+---
+output: 
+  html_document:
+    toc: false
+bibliography: fs2000.bib
+---
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+if (!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman", repos='http://cran.r-project.org')
+pacman::p_load(tidyverse,rdbnomics,magrittr,lubridate,knitr,zoo,R.matlab,stringr)
+
+opts_chunk$set(message=FALSE, warning=FALSE, cache=FALSE, comment=NA)
+
+theme <-  theme_bw()+ theme(strip.background=element_blank(),
+                            strip.text=element_text(size=15),
+                            title=element_text(size=16),
+                            panel.border=element_blank(),
+                            panel.grid.major=element_line(size=1),
+                            legend.key=element_rect(colour="white"),
+                            legend.position="bottom",
+                            legend.text=element_text(size=10),
+                            axis.text=element_text(size=10))
+blueObsMacro <- "#0D5BA4"
+
+matlab_path <- '/usr/local/MATLAB/R2015b/bin/matlab'
+dynare_path <- '/usr/local/dynare/matlab/'
+```
+
+This post replicates the estimation of the cash in advance model described in @Scho00 (termed M1 in the paper), with updated data. This implementation was written by Michel Juillard and is given in the `examples` folder of [Dynare](http://www.dynare.org/).
+
+# Data
+
+The data are retrieved directly through [DBnomics](https://db.nomics.world/) and are stocked in `fs2000_data.csv`. They are therefore different from the original dataset used by @Scho00. 
+
+```{r}
+gdp_rpc <- rdb(ids="BEA/NIPA-T70100/A939RX-Q") %>% 
+  mutate(var="gdp_rpc")
+defgdp <- rdb(ids="BEA/NIPA-T10109/A191RD-Q") %>% 
+  mutate(var="defgdp")
+
+fs2000_rawdata <- 
+  bind_rows(gdp_rpc,defgdp) %>% 
+  select(var, period, value) %>% 
+  spread(var, value) %>% 
+  arrange(period) %>% 
+  mutate(gyObs=log(gdp_rpc)-log(lag(gdp_rpc)),
+         gpObs=log(defgdp)-log(lag(defgdp)))
+
+fs2000_data <-
+  fs2000_rawdata %>%
+  transmute(time=gsub(" ","",as.yearqtr(period)),
+            gyObs=1+gyObs,
+            gpObs=1+gpObs) %>%
+  na.omit()
+
+fs2000_data %>% 
+  write.csv("fs2000_data.csv", row.names=FALSE)
+```
+
+
+# Model
+
+The equations are taken from @Naso94. Note that there is an initial minus sign missing in equation (A1), p. S63. The prior distribution follows the one originally specified in Schorfheide's paper. Note that the Beta prior for $\rho$ implies an asymptote and corresponding prior mode for $\rho$ at 0. It is generally recommended to avoid this extreme type of prior.
+
+## Preamble
+```{r}
+cat(readLines("fs2000.mod")[1:12], sep= '\n')
+```
+
+## Model equations
+```{r}
+cat(readLines("fs2000.mod")[14:29], sep= '\n')
+```
+
+## Steady state
+```{r}
+cat(readLines("fs2000.mod")[31:58], sep= '\n')
+```
+
+## Shocks
+```{r}
+cat(readLines("fs2000.mod")[60:63], sep= '\n')
+```
+
+## Estimation
+```{r}
+cat(readLines("fs2000.mod")[65:77], sep= '\n')
+```
+
+## Computation
+```{r}
+cat(readLines("fs2000.mod")[79], sep= '\n')
+```
+
+You can run Dynare directly from this file, but before that you must check the `dynare_path` and `matlab_path` and you must have a version of Dynare >= 4.4 (in order to read csv file for estimation).
+
+```{r eval=T}
+system(paste(matlab_path, '-nosplash -nodisplay -r "addpath', dynare_path , '; dynare fs2000; exit" '))
+```
+
+
+# Results
+
+```{r}
+listPriorShape <- list("Beta"=1,
+                       "Gamma"=2,
+                       "Gaussian"=3,
+                       "Inverse Gamma 1"=4,
+                       "Uniform"=5,
+                       "Inverse Gamma 2"=6,
+                       "Weibull"=8)
+
+results <- readMat("fs2000_results.mat",fixNames = F)
+mode <- readMat("fs2000_mode.mat",fixNames = F)
+M_       <- results[["M_"]]
+oo_      <- results[["oo_"]]
+```
+
+
+## Posterior for the parameters of the structural model
+
+Our results look very similar to the posterior means and standard errors for the parameters of the structural model (M1) of @Scho00 (Table II, p.659). 
+```{r}
+# prior
+dname <- unlist(subset(M_,rownames(M_)=="dname"))
+
+param_estim <- as.vector(unlist(mode[["parameter_names"]]))
+
+priorshape <- readMat(paste0("./",dname,"/prior/definition.mat"))[[1]][[1]][,1] 
+priormean  <- unlist(subset(oo_,rownames(oo_)=="prior")[[1]][1])
+priorvar   <- diag(matrix(unlist(subset(oo_,rownames(oo_)=="prior")[[1]][3]),nrow=length(priormean),byrow=TRUE))
+dataPrior <- data.frame(names       = param_estim,
+                        prior_shape = priorshape,
+                        prior_mean  = priormean,
+                        prior_stdv  = sqrt(priorvar))
+
+dataPrior$prior_shape <- factor(dataPrior$prior_shape)
+levels(dataPrior$prior_shape) <- listPriorShape
+
+# post
+postmode <- subset(oo_,row.names(oo_)=="posterior_mode")
+postnames <- c(row.names(postmode[[1]][[1]]),
+               row.names(postmode[[1]][[2]]))
+
+dataPost <- data.frame(names=postnames,
+                       unlist(subset(oo_,row.names(oo_)=="posterior_mode")[[1]]),
+                       unlist(subset(oo_,row.names(oo_)=="posterior_mean")[[1]]),
+                       unlist(subset(oo_,row.names(oo_)=="posterior_hpdinf")[[1]]),
+                       unlist(subset(oo_,row.names(oo_)=="posterior_hpdsup")[[1]]),
+                       unlist(subset(oo_,row.names(oo_)=="posterior_std")[[1]]))
+
+priorPost<-merge(dataPrior,dataPost,by="names")
+colnames(priorPost)<-c('parameter','Prior density','Prior mean','Prior stdv',
+                       "Post. mode","Post. mean",
+                       "Prob. Interval 10%","Prob. Interval 90%",
+                       "Post. stdv")
+priorPost[,-c(1,2)]<-round(priorPost[,-c(1,2)],4)
+kable(priorPost)
+```
+
+# References

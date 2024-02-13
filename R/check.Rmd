@@ -1,0 +1,415 @@
+---
+title: "Audit du code Mésange"
+author: Thomas Brand et Evariste Jeancard
+output:
+  bookdown::html_document2:
+    code_folding: hide
+    theme: flatly
+    df_print: paged
+---
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide'}
+if (!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman", repos='http://cran.r-project.org')
+pacman::p_load(tidyverse,knitr)
+
+rm(list = ls())
+
+opts_chunk$set(message=FALSE, warning=FALSE, cache=FALSE)
+```
+
+# Equations
+
+## Equations comptables
+
+```{r}
+eq_prix_a_1 <- 
+  read_table("../common/eq_comptables_prix_a-1.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="prixa1")
+eq_prix_a_1_chaines <- 
+  read_table("../common/eq_comptables_prix_a-1_chaines.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="prixa1ch")
+eq_prix_courants <- 
+  read_table("../common/eq_comptables_prix_courants.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="prixcourants")
+eq_volumes_prix_a_1 <- 
+  read_table("../common/eq_comptables_volumes_prix_a-1.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="volumesprixa1")
+eq_volumes_prix_a_1_chaines <- 
+  read_table("../common/eq_comptables_volumes_prix_a-1_chaines.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="volumesprixa1ch")
+
+eq_tee_si <-
+  read_table("../common/eq_tee_si.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="teesi")
+eq_taux <-
+  read_table("../common/eq_taux.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="taux")
+eq_travail <-
+  read_table("../common/eq_travail.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="travail")
+eq_vrac <-
+  read_table("../common/eq_vrac.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="vrac")
+eq_ecm <-
+  read_table("../common/eq_ecm.inc",col_names = "var") %>% 
+  filter(!str_detect(var,"//")) %>% 
+  filter(var!="") %>% 
+  add_column(eq="ecm")
+```
+
+```{r}
+eq <-
+  bind_rows(eq_prix_a_1,
+            eq_prix_a_1_chaines,
+            eq_prix_courants,
+            eq_volumes_prix_a_1,
+            eq_volumes_prix_a_1_chaines,
+            eq_tee_si,
+            eq_taux,
+            eq_travail,
+            eq_vrac,
+            eq_ecm) %>% 
+  separate(var,c("X1","X2"),sep="\\[name='") %>% 
+  filter(X1=="") %>% 
+  select(-X1) %>% 
+  filter(X2!="NA") %>% 
+  separate(X2,c("name","equation"),sep="'\\]")
+```
+
+```{r}
+simple_prix_a_1 <- 
+  eq %>% 
+  filter(eq=="prixa1") %>% 
+  pull(name) %>% 
+  str_trim() %>% 
+  str_sub(end=-2)
+simple_prix_a_1_chaines <-
+  eq %>% 
+  filter(eq=="prixa1ch") %>% 
+  pull(name) %>% 
+  str_trim() %>% 
+  str_sub(end=-5)
+simple_prix_courants <- 
+  eq %>% 
+  filter(eq=="prixcourants") %>% 
+  pull(name) %>% 
+  str_trim() %>% 
+  str_sub(end=-2)
+simple_volumes_prix_a_1 <- 
+  eq %>% 
+  filter(eq=="volumesprixa1") %>% 
+  pull(name) %>% 
+  str_trim() %>% 
+  str_sub(end=-2)
+simple_volumes_prix_a_1_chaines <- 
+  eq %>% 
+  filter(eq=="volumesprixa1ch") %>% 
+  pull(name) %>% 
+  str_trim() %>% 
+  str_sub(end=-5)
+```
+
+```{r}
+check1 <- 
+  data.frame(simple_prix_a_1,
+             check=simple_prix_a_1 %in% simple_prix_a_1_chaines) %>% 
+  filter(check==FALSE)
+check2 <- 
+  data.frame(simple_prix_a_1,
+             check=simple_prix_a_1 %in% simple_prix_courants) %>% 
+  filter(check==FALSE)
+check3 <- 
+  data.frame(simple_prix_a_1,
+             check=simple_prix_a_1 %in% simple_volumes_prix_a_1) %>% 
+  filter(check==FALSE)
+check4 <- 
+  data.frame(simple_prix_a_1,
+             check=simple_prix_a_1 %in% simple_volumes_prix_a_1_chaines) %>% 
+  filter(check==FALSE)
+comptables_exo <- c("td_p3g_dai","td_p3g_dse","td_p3g_dsa","td_p51g_dai","td_p51g_dse","td_p51g_dsa")
+check5 <-
+  check4 %>% 
+  mutate(check=!simple_prix_a_1 %in% comptables_exo) %>% 
+  filter(check==TRUE)
+```
+
+Pour chacun des 5 blocs d'équations comptables, on devrait avoir 292 équations :
+
+* Pour les prix a-1, on en a bien `r length(simple_prix_a_1)`.
+
+* Pour les prix a-1 chaînés, on en a `r length(simple_prix_a_1_chaines)`, les `r nrow(check1)` autres sont définies dans les équations économétriques : `r paste0(check1$simple_prix_a_1,"9_ch")`.
+
+* Pour les prix courants, on en a bien `r length(simple_prix_courants)`.
+
+* Pour les volumes prix a-1, on en a bien `r length(simple_volumes_prix_a_1)`.
+
+* Pour les volumes prix a-1 chaînés, on en a `r length(simple_volumes_prix_a_1_chaines)`
+  * `r nrow(check5)` sont définies dans les équations économétriques `r paste0(check5$simple_prix_a_1,"7_ch")`
+  * `r nrow(check4)-nrow(check5)` dans les exogènes `r paste0(comptables_exo,"7_ch")`.
+
+Pour les autres blocs d'équations :
+
+* Pour les équations économétriques, on en dénombre `r nrow(eq_ecm)`, dont 
+
+  * 11 sont des variables auxiliaires
+  * `r nrow(check1)+nrow(check5)` sont définies précédemment
+  * `r nrow(eq_ecm)-11-(nrow(check1)+nrow(check5))` autres équations économétriques
+
+
+* Pour le tableau économique d'ensemble des secteurs institutionnels, on en dénombre `r nrow(eq_tee_si)` 
+
+* Pour les taux, on en dénombre `r nrow(eq_taux)`
+
+* Pour le travail, on en dénombre `r nrow(eq_travail)`
+
+* Pour le reste, on en dénombre `r nrow(eq_vrac)`
+
+```{r}
+nbr_eq = length(simple_prix_a_1)*5 - length(comptables_exo) - (nrow(check1)+nrow(check5)) + nrow(eq_ecm) + nrow(eq_tee_si) + nrow(eq_taux) + nrow(eq_travail) + nrow(eq_vrac)
+```
+
+On arrive à un total de `r nbr_eq` équations.
+
+# Variables
+
+## Endogènes
+
+```{r}
+var_endo <- 
+  read_table("../common/var_endogenous.inc",col_names = "var") %>% 
+  mutate(var=gsub("\\s+", " ", str_trim(var))) %>% 
+  separate(var,c("var","other"),sep = "//") %>% 
+  select(-other) %>% 
+  separate(var,c("X1","X2","X3","X4","X5","X6","X7","X8"),sep=" ",fill="right") %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(V1=.) %>% 
+  filter(!V1%in%c("",NA))
+```
+
+```{r}
+check <- 
+  data.frame(var_endo,
+             check=str_trim(var_endo$V1) %in% str_trim(eq$name)) %>% 
+  filter(check==FALSE)
+```
+
+On a bien `r nrow(var_endo)` endogènes pour `r nbr_eq` équations. En outre, chaque nom d'équation correspond à une variable endogène et chaque variable endogène correspond à un nom d'équation. Cette bijection est valide par bloc d'équations : 
+
+* le bloc d'équations comptables, 
+* le bloc de taux, 
+* le bloc de secteur institutionnel, 
+* le bloc travail, 
+* le bloc économétrique, 
+* le reste.
+
+```{r}
+nbr_endo_comptables <- length(simple_prix_a_1)*5 - length(comptables_exo) - (nrow(check1)+nrow(check5))
+simple_comptables <- 
+  eq %>% 
+  filter(eq %in% c("prixa1","prixa1ch","prixcourants","volumesprixa1","volumesprixa1ch")) %>% 
+  pull(name) %>% 
+  str_trim()
+var_endo_comptables <- 
+  var_endo[1:nbr_endo_comptables,] %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(X1=.)
+check_comptables <- 
+  data.frame(simple_comptables,
+             check=simple_comptables %in% var_endo_comptables$X1) %>% 
+  filter(check==FALSE)
+```
+
+```{r}
+simple_taux <- 
+  eq %>% 
+  filter(eq=="taux") %>% 
+  pull(name) %>% 
+  str_trim()
+var_endo_taux <- 
+  var_endo[(nbr_endo_comptables+1):(nrow(eq_taux)+nbr_endo_comptables),] %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(X1=.) %>% 
+  filter(str_detect(X1,"tx_"))
+check_taux <- 
+  data.frame(simple_taux,
+             check=simple_taux %in% var_endo_taux$X1) %>% 
+  filter(check==FALSE)
+```
+
+```{r}
+simple_teesi <- 
+  eq %>% 
+  filter(eq=="teesi") %>% 
+  pull(name) %>% 
+  str_trim()
+var_endo_teesi <- 
+  var_endo[(nrow(eq_taux)+nbr_endo_comptables+1):(nrow(eq_tee_si)+nrow(eq_taux)+nbr_endo_comptables),] %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(X1=.)
+check_teesi <- 
+  data.frame(simple_teesi,
+             check=simple_teesi %in% var_endo_teesi$X1) %>% 
+  filter(check==FALSE)
+```
+
+```{r}
+simple_travail <- 
+  eq %>% 
+  filter(eq=="travail") %>% 
+  pull(name) %>% 
+  str_trim()
+var_endo_travail <- 
+  var_endo[(nrow(eq_tee_si)+nrow(eq_taux)+nbr_endo_comptables+1):(nrow(eq_travail)+nrow(eq_tee_si)+nrow(eq_taux)+nbr_endo_comptables),] %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(X1=.)
+check_travail <-
+  data.frame(simple_travail,
+             check=simple_travail %in% var_endo_travail$X1) %>% 
+  filter(check==FALSE)
+```
+
+```{r}
+simple_ecm <- 
+  eq %>% 
+  filter(eq=="ecm") %>% 
+  pull(name) %>% 
+  str_trim()
+var_endo_ecm <-
+  var_endo[(nrow(eq_travail)+nrow(eq_tee_si)+nrow(eq_taux)+nbr_endo_comptables+1):(nrow(eq_ecm)+nrow(eq_travail)+nrow(eq_tee_si)+nrow(eq_taux)+nbr_endo_comptables),] %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(X1=.)
+check_ecm <- 
+  data.frame(simple_ecm,
+             check=simple_ecm %in% str_trim(var_endo_ecm$X1)) %>% 
+  filter(check==FALSE)
+```
+
+```{r}
+simple_vrac <- 
+  eq %>% 
+  filter(eq=="vrac") %>% 
+  pull(name) %>%  
+  str_trim()
+var_endo_vrac <-
+  var_endo[(nrow(eq_ecm)+nrow(eq_travail)+nrow(eq_tee_si)+nrow(eq_taux)+nbr_endo_comptables+1):nrow(var_endo),] %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(X1=.)
+check_vrac <- 
+  data.frame(simple_vrac,
+             check=simple_vrac %in% var_endo_vrac$X1) %>% 
+  filter(check==FALSE)
+```
+
+## Exogènes
+
+```{r}
+var_exo <- 
+  read_table("../common/var_exogenous.inc",col_names = "var") %>% 
+  mutate(var=gsub("\\s+", " ", str_trim(var))) %>% 
+  separate(var,c("var","other"),sep = "//") %>% 
+  select(-other) %>% 
+  separate(var,c("X1","X2","X3","X4","X5","X6","X7"),sep=" ",fill="right") %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(V1=.) %>% 
+  filter(!V1%in%c("",NA))
+```
+
+Parmi les `r nrow(var_exo)` variables exogènes, on dénombre `r nrow(filter(var_exo,str_detect(V1,"corr_")))` corrections.
+
+```{r}
+eq_corr <-
+  eq %>% 
+  filter(str_detect(equation,"corr_")) %>% 
+  mutate(name2=str_trim(str_remove_all(name,"td_|7_ch"))) %>% 
+  mutate(name3=case_when(str_sub(name2,-1)=="7" ~ str_sub(name2,end=-2),
+                         TRUE ~ name2)) %>% 
+  separate(equation,c("other","corr"),sep = "corr_") %>% 
+  separate(corr,c("corr","other2"),sep=" ")
+
+check6 <-
+  data.frame(eq_corr$corr,
+             check=str_trim(eq_corr$corr) %in% str_trim(eq_corr$name3)) %>% 
+  filter(check==FALSE)
+```
+
+Ces `r nrow(filter(var_exo,str_detect(V1,"corr_")))` corrections interviennent dans `r nrow(eq_corr)` équations. Les noms des corrections correspondent à chaque fois au nom de l'équation (modulo le préfixe et le suffixe).
+
+## Observables
+
+Afin de calibrer ou estimer les paramètres du modèle, on doit obtenir comme variables observables toutes les endogènes des équations qui contiennent une correction ou une cale ainsi que toutes les variables du membre de droite dans les équations économétriques.
+
+```{r}
+var_obs <- 
+  read_table("var_obs.txt",col_names = "var") %>% 
+  mutate(var=gsub("\\s+", " ", str_trim(var))) %>% 
+  separate(var,c("other","varobs"),sep = ": ") %>% 
+  select(-other) %>% 
+  separate(varobs,c("X1","X2","X3","X4","X5","X6","X7","X8","X9","X10","X11","X12","X13","X14",
+                    "X15","X16","X17","X18","X19","X20","X21","X22","X23","X25","X26","X27"),sep=",") %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(V1=.) %>% 
+  filter(!V1%in%c("",NA)) %>% 
+  mutate(V1=str_trim(V1)) %>% 
+  pull(V1) %>% 
+  unique()
+write.table(var_obs,"var_obs.inc",col.names = FALSE,row.names = FALSE,quote=FALSE)
+```
+
+
+# Paramètres
+
+## Calibrés
+
+```{r}
+cale_ecm <- 
+  read_table("../common/param_cale_ecm.inc",col_names = "var") %>% 
+  mutate(var=gsub("\\s+", " ", str_trim(var))) %>% 
+  separate(var,c("var","other"),sep = "//") %>% 
+  select(-other) %>% 
+  separate(var,c("X1","X2"),sep=" ",fill="right") %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(V1=.) %>% 
+  filter(!V1%in%c("",NA))
+
+cale_ct <-
+  read_table("../common/param_cale_coeff_techniques.inc",col_names = "var") %>% 
+  mutate(var=gsub("\\s+", " ", str_trim(var))) %>% 
+  separate(var,c("var","other"),sep = "//") %>% 
+  select(-other) %>% 
+  separate(var,c("X1","X2","X3","X4","X5"),sep=" ",fill="right") %>% 
+  t() %>% 
+  as.vector() %>% 
+  data.frame(V1=.) %>% 
+  filter(!V1%in%c("",NA))
+```
+
+Chaque équation économétrique (hors auxiliaire) contient une cale différente (en tout `r nrow(cale_ecm)`).
+
