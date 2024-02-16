@@ -400,8 +400,8 @@ pop_a_tot <- pop_eurostat_bycountry |>
 
 # Use the custom `chain()` function
 pop_chained <- chain(
-  to_rebase = pop_a_16, 
-  basis = pop_a_tot, 
+  to_rebase  = pop_a_16, 
+  basis      = pop_a_tot, 
   date_chain = "1982-01-01"
   )
 
@@ -725,17 +725,17 @@ final_df <- bind_rows(df1, pop)
 plot_df <- final_df
 
 list_var <- list(
-  "Real GDP [1]" = "gdp",
-  "Real consumption [2]" = "conso",
-  "Real investment [3]" = "inves",
-  "GDP deflator [4]" = "defgdp",
+  "Real GDP [1]"             = "gdp",
+  "Real consumption [2]"     = "conso",
+  "Real investment [3]"      = "inves",
+  "GDP deflator [4]"         = "defgdp",
   "Consumption deflator [5]" = "defconso",
-  "Investment deflator [6]" = "definves",
-  "Real wage [7]" = "wage",
-  "Hours worked [8]" = "hours",
-  "Employment [9]" = "employ",
-  "Interest rate [10]" = "shortrate",
-  "Population [11]" = "pop"
+  "Investment deflator [6]"  = "definves",
+  "Real wage [7]"            = "wage",
+  "Hours worked [8]"         = "hours",
+  "Employment [9]"           = "employ",
+  "Interest rate [10]"       = "shortrate",
+  "Population [11]"          = "pop"
 )
 
 plot_df$var <- factor(plot_df$var)
