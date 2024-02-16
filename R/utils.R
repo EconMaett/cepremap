@@ -42,7 +42,7 @@ scale_color_discrete <- function(...) {
 
 
 ## dbnomics -----
-
+# The original used "transparent" instead of "white" backgrounds.
 dbnomics <- function() {
   list(
     scale_x_date(expand = c(0, 0)),
@@ -53,10 +53,10 @@ dbnomics <- function() {
     theme(
       legend.position   = "bottom",
       legend.direction  = "vertical",
-      legend.background = element_rect(fill = "transparent", colour = NA),
+      legend.background = element_rect(fill = "white", colour = NA),
       legend.key        = element_blank(),
-      panel.background  = element_rect(fill = "transparent", colour = NA),
-      plot.background   = element_rect(fill = "transparent", colour = NA),
+      panel.background  = element_rect(fill = "white", colour = NA),
+      plot.background   = element_rect(fill = "white", colour = NA),
       legend.title      = element_blank()
     ),
     annotate(
@@ -82,3 +82,48 @@ display_table <- function(DT) {
     kableExtra::scroll_box(width = "100%", height = "500px")
 }
 
+
+## Chaining function ----
+# To chain tow datasets, we build a custom `chain()` function whose
+# inputs must be two data frames with three standard columns
+# `period`, `var`, and `value`.
+
+# It returns a data frame composed of chained values,
+# i.e. the dataframe "to rebase" will be chained to the "basis" dataframe.
+
+# More specifically, the function:
+# - computes the growth rates from `value` in the dataframe of the 1st argument
+# - multiplies it with the value of a reference chosen in `value` in the dataframe of the 2nd argument
+# - at the `date` specified in the 3rd argument.
+chain <- function(to_rebase, basis, date_chain) {
+  
+  date_chain <- as.Date(date_chain, format = "%Y-%m-%d")
+  
+  valref <- basis |> 
+    filter(period == date_chain) |> 
+    mutate(
+      var,
+      value_ref = value,
+      .keep = "none"
+    )
+  
+  res <- to_rebase |> 
+    filter(period <= date_chain) |> 
+    arrange(desc(period)) |> 
+    group_by(var) |> 
+    mutate(
+      growth_rate = c(1, value[-1] / lag(value)[-1])
+    ) |> 
+    full_join(y = valref, by = "var") |> 
+    group_by(var) |> 
+    mutate(
+      period,
+      value = cumprod(growth_rate) * value_ref,
+      .keep = "none"
+    ) |> 
+    ungroup() |> 
+    bind_rows(filter(basis, period > date_chain)) |> 
+    arrange(period)
+  
+  return(res)
+}
