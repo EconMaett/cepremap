@@ -1,7 +1,6 @@
 # User-defined functions ----
 
 ## reorder_cols ----
-
 reorder_cols <- function(x) {
   cols <- c(
     "provider_code", "dataset_code", "dataset_name",
@@ -30,16 +29,13 @@ reorder_cols <- function(x) {
   
   cols <- match(x = cols, table = colnames(x))
   
-  dplyr::select(.data = x, dplyr::all_of(cols))
+  select(.data = x, all_of(cols))
 }
 
-
 ## scale_color_discrete ----
-
 scale_color_discrete <- function(...) {
   scale_color_brewer(palette = "Set1")
 }
-
 
 ## dbnomics -----
 # The original used "transparent" instead of "white" backgrounds.
@@ -60,30 +56,29 @@ dbnomics <- function() {
       legend.title      = element_blank()
     ),
     annotate(
-      geom  = "text",
-      label = "DBnomics <http://db.nomics.world>",
-      x = structure(.Data = Inf, class = "Date"),
-      y = -Inf,
-      hjust = 1.1,
-      vjust = -0.4,
-      col = "grey",
+      geom     = "text",
+      label    = "DBnomics <http://db.nomics.world>",
+      x        = structure(.Data = Inf, class = "Date"),
+      y        = -Inf,
+      hjust    = 1.1,
+      vjust    = -0.4,
+      col      = "grey",
       fontface = "italic"
     )
   )
 }
-
 
 ## display_table ----
 display_table <- function(DT) {
   kable(DT) |> 
     kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) |> 
     kable_paper() |> 
-    kableExtra::column_spec(column = 1:ncol(DT), width_min = "4cm") |> 
-    kableExtra::scroll_box(width = "100%", height = "500px")
+    column_spec(column = 1:ncol(DT), width_min = "4cm") |> 
+    scroll_box(width = "100%", height = "500px")
 }
 
 
-## Chaining function ----
+## chain ----
 # To chain tow datasets, we build a custom `chain()` function whose
 # inputs must be two data frames with three standard columns
 # `period`, `var`, and `value`.
@@ -124,6 +119,30 @@ chain <- function(to_rebase, basis, date_chain) {
     ungroup() |> 
     bind_rows(filter(basis, period > date_chain)) |> 
     arrange(period)
+  
+  return(res)
+}
+
+## deseason ----
+# Convert data frame into `ts` time object, apply methods 
+# of `seasonal` R package, converts back to data frame.
+deseason <- function(source_df = data_large, var_arrange = "pubcons", ...) {
+  
+  local_data <- source_df
+  
+  detrend <- local_data[var_arrange] |> 
+    ts(start = c(1980, 1), frequency = 4) |> 
+    seas(na.action = na.exclude)
+  
+  res <- as.numeric(final(detrend))
+  
+  res <- tibble(
+    value  = res,
+    period = local_data$period,
+    var    = var_arrange
+  ) |> 
+    arrange(period) |> 
+    mutate(period, var, value, .keep = "none")
   
   return(res)
 }

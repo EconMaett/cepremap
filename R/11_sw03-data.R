@@ -6,10 +6,8 @@ library(kableExtra)
 library(rdbnomics)
 library(mFilter)
 source("R/utils.R")
-
-# Automatically update the database used in the Bayesian estimation of the DSGE model 
+# Update the database used in the Bayesian estimation of the DSGE model 
 # proposed in Smets and Wouter (2003) for the Euro area.
-
 # The eight time series used in the original estimation of Smets and Wouters (2003) are:
 #   - GDP
 #   - GDP deflator
@@ -135,7 +133,7 @@ ggplot(data = hours_confboard, mapping = aes(x = period, y = value)) +
   dbnomics() +
   ggtitle("Hours worked")
 
-ggsave(filename = "TED_EA19_hours.png", path = "figures/11_sw03-data/", height = 12, width = 12)
+ggsave(filename = "01_TED_EA19_hours.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
 # There are still two problems with such a series:
 #   1. the series does not cover all the 19 member states of the Euro area for the whole period
@@ -267,7 +265,7 @@ ggplot(data = hours_filtered_levgr, mapping = aes(x = period, y = value, color =
   dbnomics() +
   ggtitle("Hours worked")
 
-ggsave(filename = "TED_EA19_hours-approx.png", path = "figures/11_sw03-data/", height = 12, width = 12)
+ggsave(filename = "02_TED_EA19_hours-approx.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
 
 # Retain the Kalman filter method of interpolation to avoid the jump each first quarter in the growth rate
@@ -332,14 +330,14 @@ ggplot(data = check, mapping = aes(x = period, y = value, group = var, linetype 
   ggtitle("Comparison of hours worked series")
 
 
-ggsave(filename = "TED_EA19_hours-comparison.png", path = "figures/11_sw03-data/", height = 12, width = 12)
+ggsave(filename = "03_TED_EA19_hours-comparison.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
 
 ### Second special case: Population ----
 # The second special case is the population series.
 # Quarterly population series only exist for the Euro Area after the year 2005.
 
-# Take historical population with annualfrequency from Eurostat by country until 2005 
+# Take historical population with annual frequency from Eurostat by country until 2005 
 # and then add the original Euro area quarterly population series from Eurostat.
 
 # Build URLs to the DBnomcis API to retrieve annual population series for the 19 Euro Area countries.
@@ -366,7 +364,7 @@ pop_eurostat_bycountry |>
   dbnomics() +
   ggtitle("Working-age population (in millions)")
 
-ggsave(filename = "Eurostat_population.png", path = "figures/11_sw03-data/", height = 12, width = 12)
+ggsave(filename = "04_Eurostat_population.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
 # There are still two problems with this time series:
 #   1) the series does not cover all 19 Euro area member countries for the whole period
@@ -456,7 +454,7 @@ ggplot(data = pop_filtered_levgr, mapping = aes(x = period, y = value, color = v
   dbnomics() +
   ggtitle("Population")
 
-ggsave(filename = "Eurostat_population-approx.png", path = "figures/11_sw03-data/", height = 12, width = 12)
+ggsave(filename = "05_Eurostat_population-approx.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
 
 # Retain the Kalman filter method of interpolation to avoid the jump each first quarter 
@@ -522,7 +520,7 @@ ggplot(data = check, mapping = aes(x = period, y = value, color = var)) +
   dbnomics() +
   ggtitle("Population")
 
-ggsave(filename = "Eurostat_population-comparison.png", path = "figures/11_sw03-data/", height = 12, width = 12)
+ggsave(filename = "06_Eurostat_population-comparison.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
 
 ### Recent data (since the end of the 1990s) ----
@@ -679,7 +677,7 @@ pop |>
   dbnomics() +
   ggtitle("Quarterly population")
 
-ggsave(filename = "Eurostat_population-growthrates.png", path = "figures/11_sw03-data/", height = 12, width = 12)
+ggsave(filename = "07_Eurostat_population-growthrates.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
 
 # The last years of the series exhibit high levels of volatility
@@ -712,7 +710,7 @@ ggplot(data = pop_filtered_levgr, mapping = aes(x = period, y = value, color = v
   dbnomics() +
   ggtitle("Population")
 
-ggsave(filename = "Eurostat_population-smoothed.png", path = "figures/11_sw03-data/", height = 12, width = 12)
+ggsave(filename = "08_Eurostat_population-smoothed.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
 
 # We retain the smoothed series obtained from the Hodrick-Prescott filter.
@@ -746,7 +744,7 @@ ggplot(data = plot_df, mapping = aes(x = period, y = value)) +
   facet_wrap(facets = ~ var, scales = "free_y", ncol = 3) +
   dbnomics()
   
-ggsave(filename = "final-database.png", path = "figures/11_sw03-data/", height = 12, width = 12)
+ggsave(filename = "09_final-database.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
 
 # You can download the 11 series directly here: shiny.cepremap.fr/data/EA_SW_rawdata.csv
