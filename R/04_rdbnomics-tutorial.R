@@ -32,15 +32,12 @@ source(file = "R/utils.R")
 
 # According to the list of providers on DBnomics
 # https://db.nomics.world/providers
-# AMECO is the
-# Annual macro-economic database of the European Commission's 
+# AMECO is the Annual Macro-ECOnomic database of the European Commission's 
 # Directorate General for Economic and Financial Affairs
 
 # ZUTN is the Unemployment rate: total: - Member States: definition EUROSTAT
 
 # EA19 means we want the 19 European member states
-
-
 df <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN") |> 
   filter(!is.na(value)) |> 
   as_tibble()
@@ -59,7 +56,6 @@ colnames(df)
 #   - value
 
 reorder_cols(df)
-
 # Other columns depend on the provider and the dataset.
 # They always come in pairs (for the code and the name).
 
@@ -67,11 +63,9 @@ reorder_cols(df)
 #   - unit (code) and Unit (name)
 #   - geo (code) and Country (name)
 #   - freq (code) and Frequency (name)
-
 df |> 
   reorder_cols() |> 
   display_table()
-
 
 ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
   geom_line(linewidth = 1.2) +
@@ -80,7 +74,6 @@ ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
 
 ggsave(filename = "01_AMECO_ZUTN_EA19.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
-
 
 ### Fetch two series -----
 
@@ -94,7 +87,6 @@ df |>
   reorder_cols() |> 
   display_table()
 
-
 ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2) +
@@ -102,7 +94,6 @@ ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
 
 ggsave(filename = "02_AMECO_ZUTN_EA19-DNK.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
-
 
 ### Fetch two series from different datasets and different providers -----
 
@@ -114,7 +105,6 @@ df |>
   reorder_cols() |> 
   display_table()
 
-
 ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
   geom_line(linewidth = 1.2) +
   geom_point(size = 2) +
@@ -122,7 +112,6 @@ ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
 
 ggsave(filename = "03_AMECO_ZUTN_EA19-Eurostat_une.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
-
 
 ## Fetch time series by `mask` ----
 ### Fetch one series ----
@@ -148,7 +137,6 @@ ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
 ggsave(filename = "04_IMF_BOP_FR.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
 
-
 ### Fetch two series ----
 # Fetch two series of the dataset "Balance of Payments" (BOP) 
 # from the provider "IMF"
@@ -173,9 +161,7 @@ ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
 ggsave(filename = "05_IMF_BOP_FR-DE.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
 
-
 ### Fetch all series along one dimension ----
-
 # Fetch all series of the dataset "Balance of Payments" (BOP) 
 # from the provider "IMF"
 df <- rdb(
@@ -197,7 +183,6 @@ df |>
   pull(REF_AREA) |> 
   unique()
 
-
 ### Fetch series along multiple dimensions ----
 # Fetch series along multiple dimensions of the dataset "Balance of Payments" (BOP) 
 # from the provider "IMF".
@@ -214,7 +199,6 @@ df <- rdb(
 df |> 
   reorder_cols() |> 
   display_table()
-
 
 ## Fetch time series by `dimensions` ----
 # Searching by `dimensions` is a less concise way of selecting time series than
@@ -255,7 +239,6 @@ ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
 ggsave(filename = "06_AMECO_ZUTN_EA19.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
 
-
 ### Fetch two values of one dimension of ZUTN from AMECO ----
 df <- rdb(
   provider_code = "AMECO",
@@ -286,7 +269,6 @@ ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
 
 ggsave(filename = "07_AMECO_ZUTN_EA19-DNK.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
-
 
 ### Fetch several values of several dimensions from Doing Business (DB) from World Bank ----
 # Note: The World Bank Ease of Doing Business Index 
@@ -319,7 +301,6 @@ ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
 
 ggsave(filename = "08_IMF_WEO_FR.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
-
 
 ### Fetch series of dataset "WEO by countries" (WEO) from provider IMF ----
 df <- rdb(
@@ -358,13 +339,12 @@ df |>
   display_table()
 
 ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
-  geom_line(linewidh = 1.2) +
+  geom_line(linewidth = 1.2) +
   geom_point(size = 2) +
   dbnomics()
 
 ggsave(filename = "09_SECO_GDP_GR.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
-
 
 ## Fetch time series from the cart ----
 # On the cart page of the DBnomics website
@@ -410,7 +390,6 @@ ggplot(data = df, mapping = aes(x = period, y = value, color = series_name)) +
 ggsave(filename = "10_BOE_RPMTDDC-RPMTBVE.png", path = "figures/04_rdbnomics-tutorial/", height = 8, width = 12)
 graphics.off()
 
-
 ## Fetch the available datasets from a provider ---
 # When fetching series from DBnomics
 # https://db.nomics.world/
@@ -454,7 +433,6 @@ names(DT)
 DT <- sapply(X = DT, FUN = function(y) { nrow(y) })
 DT <- tibble(name = names(DT), n = unname(DT))
 DT |> arrange(desc(n))
-
 
 # Fetch the possible dimensions of available datasets from a provider ----
 
@@ -599,18 +577,15 @@ df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN")
 # This option of the package can be disabled with:
 options(rdbnomics.curl = NULL)
 
-
 #### Use the connection only for a function call ----
 # If a complete configuration is not needed but just
 # an "on the fly" execution, then use the argument 
 # `curl_config` inside of the function `rdbnomics::rdb()`
 df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN", curl_config = h)
 
-
 ### Use the default R internet connection ----
 # To retrieve the data with the default R internet connection,
 # `rdbnomics` will use the `base::readLines()` function. 
-
 
 #### Set the connection up for a session ----
 # To activate this feature for a single session only, enable
@@ -628,7 +603,6 @@ options(rdbnomics.use_readLines = FALSE)
 # If you just want to do this once, use the argument `use_readLiens`
 # inside the function `rdbnomics::rdb()`
 df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN", use_readLines = TRUE)
-
 
 ## Transform time series with filters ----
 # The `rdbnomics` R package interacts with the Time Series Editor of the
@@ -686,11 +660,9 @@ df <- rdb(
 #     can be used to compare the interpolated and the original series graphically.
 #   - `filtered` (boolean): `TRUE` if filtered, `FALSE` otherwise.
 
-
 # The content of two columns are modified:
 #   - `series_code`: same as before, but the suffix `_filtered` is added.
 #   - `series_name`: same as before, but the suffix `(filtered)` is added.
-
 df |> 
   head() |> 
   display_table()

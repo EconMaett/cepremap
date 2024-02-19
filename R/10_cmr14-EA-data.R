@@ -1,14 +1,12 @@
 # 10 - Automating update of a finance database for the Euro Area ----
-
+# Update the database used in Christiano et al. (2014), but for the
+# Euro area, on the basis of the Smets and Wouters (2003) database.
 # URL: https://macro.cepremap.fr/article/2016-06/cmr14-EA-data/
 library(tidyverse)
 library(zoo)
 library(rdbnomics)
 library(kableExtra)
 source(file = "R/utils.R")
-
-# Update the database used in Christiano et al. (2014), but for the
-# Euro area, on the basis of the Smets and Wouters (2003) database.
 
 # Four financial time series are used in Christiano et al. (2014):
 #   - Loans to non-financial corporations
@@ -25,17 +23,13 @@ source(file = "R/utils.R")
 #   - International Financial Statistics (IFS) from the International Monetary Fund (IMF)
 #   - Bank of International Settlements (BIS)
 #   - European Central Bank (ECB)
-# We retrieve the data from DBnomics.
-
 
 ## Loans to non-financial corporations and to households -----
 # We download the loan series from the Bank for International Settlements (BIS).
-EAtot_code <- c(
-  "DE", "FI", "FR", "IT", "PT", "AT", "GR", "IE", "NL", "BE", "ES", "XM"
-)
+EAtot_code <- c("DE", "FI", "FR", "IT", "PT", "AT", "GR", "IE", "NL", "BE", "ES", "XM")
 
 url_country <- paste0(EAtot_code, collapse = "+")
-url_filter <- paste0("Q.", url_country, ".N+H.A.M.XDC.A")
+url_filter  <- paste0("Q.", url_country, ".N+H.A.M.XDC.A")
 #   - N or H: Borrowing sector : NFC or Households
 #   - A:      Lending sector : All
 #   - M:      Valuation method : Market value
@@ -66,7 +60,7 @@ loans_hh <- loans |>
 
 varname_hh <- unique(as.character(filter(.data = loans_hh, country == "XM")$series_name))
 
-laons_hh <- loans_hh |> 
+loans_hh <- loans_hh |> 
   select(-series_name)
 
 # Check the first date available for loans to non-financial corporations (NFC) 
@@ -78,7 +72,7 @@ loans_nfc |>
   ungroup() |> 
   kable()
 
-laons_hh |> 
+loans_hh |> 
   group_by(country) |> 
   summarise(first_date = min(period)) |> 
   arrange(first_date) |> 
@@ -97,12 +91,12 @@ loans_nfc_EA <- loans_nfc |>
 
 # Plot credit to NFC
 ggplot(data = bind_rows(loans_nfc_countries, loans_nfc_EA), mapping = aes(x = period, y = value)) +
-  geom_line(color = "dodgerblue3") +
+  geom_line(linewidth = 1.2, color = "dodgerblue3") +
   facet_wrap(facets = ~ country, ncol = 3, scales = "free_y") +
   dbnomics() +
   ggtitle("Loans to non-financial corporations (billions of euro)")
 
-ggsave(filename = "BIS_credit_nfc.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "01_BIS_credit_nfc.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
 graphics.off()
 
 loans_hh_countries <- loans_hh |> 
@@ -114,17 +108,17 @@ loans_hh_EA <- loans_hh |>
 
 # Plot loans to HH
 ggplot(data = bind_rows(loans_hh_countries, loans_hh_EA), mapping = aes(x = period, y = value)) +
-  geom_line(color = "dodgerblue3") +
+  geom_line(linewidth = 1.2, color = "dodgerblue3") +
   facet_wrap(facets = ~ country, ncol = 3, scales = "free_y") +
   dbnomics() +
   ggtitle("Loans to households and NPISHs (billions of euro)")
 
-ggsave(filename = "BIS_credit_hh.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "02_BIS_credit_hh.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
 graphics.off()
 
 # Next we compare the raw sum over the available countries and the
 # and the same chained to the EA series.
-laons_nfc_countries <- loans_nfc_countries |> 
+loans_nfc_countries <- loans_nfc_countries |> 
   select(-var) |> 
   mutate(var = country)
 
@@ -163,11 +157,11 @@ loans_nfc_EA <- loans_nfc_EA |>
   mutate(var = "EA")
 
 ggplot(data = bind_rows(loans_nfc_sumAll, loans_nfc_EA, loans_nfc_chained), mapping = aes(x = period, y = value, color = var)) +
-  geom_line() +
+  geom_line(linewidth = 1.2) +
   dbnomics() +
   ggtitle("Loans to non-financial corporations (billions of euro) [1]")
 
-ggsave(filename = "BIS_credit_nfc_chained.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "03_BIS_credit_nfc_chained.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
 graphics.off()
 
 varname_nfc
@@ -206,21 +200,20 @@ loans_hh_chained <- chain(
   ) |> 
   mutate(var = "chained")
 
-laons_hh_EA <- loans_hh_EA |> 
+loans_hh_EA <- loans_hh_EA |> 
   select(-country) |> 
   mutate(var = "EA")
 
 ggplot(data = bind_rows(loans_hh_sumAll, loans_hh_EA, loans_hh_chained), mapping = aes(x = period, y = value, color = var)) +
-  geom_line() +
+  geom_line(linewidth = 1.2) +
   dbnomics() +
   ggtitle("Loans to households and NPISHs (billions of euro) [1]")
 
 
-ggsave(filename = "BIS_credit_hh_chained.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "04_BIS_credit_hh_chained.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
 graphics.off()
 
 varname_hh
-
 
 # Eventually, we use the EA series in levels after 1999, and the growth rates
 # of the sum of loans for all available countries to complete
@@ -237,9 +230,7 @@ loans_hh <- chain(
   date_chain = "1999-01-01"
 )
 
-
 # Bank lending rates ----
-
 ### Historical data from OECD ----
 
 # To build long series of lending rates, we use data from 

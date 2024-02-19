@@ -1,4 +1,6 @@
 # 10 - Automating update of the Smets and Wouters (2003) database -----
+# Update the database used in the Bayesian estimation of the DSGE model 
+# proposed in Smets and Wouter (2003) for the Euro area.
 # URL: https://macro.cepremap.fr/article/2015-10/sw03-data/
 library(tidyverse)
 library(zoo)
@@ -6,9 +8,7 @@ library(kableExtra)
 library(rdbnomics)
 library(mFilter)
 source("R/utils.R")
-# Update the database used in the Bayesian estimation of the DSGE model 
-# proposed in Smets and Wouter (2003) for the Euro area.
-# The eight time series used in the original estimation of Smets and Wouters (2003) are:
+# Eight time series are used in the original estimation of Smets and Wouters (2003):
 #   - GDP
 #   - GDP deflator
 #   - Consumption
@@ -18,15 +18,14 @@ source("R/utils.R")
 #   - Working-age population
 #   - Interest rate
 
-# To those series we add three others:
+# We add three others:
 #   - Hours worked
 #   - Consumption deflator
 #   - Investment deflator
 
-# In the original database of Smets and Wouters (2003), employment is used as 
-# a proxy for the hours worked whose series did not exist yet.
+# The original database of Smets and Wouters (2003) used employment as a proxy for the hours worked.
 
-# We try to obtain one single database by merging data from:
+# We merge data from:
 #   - The Area-Wide Model (AWM) proposed by Fagan et al. (2001).
 #   - The Conference Board
 #   - The European Central Bank (ECB)
@@ -67,7 +66,6 @@ if (! "awm19up18.csv" %in% list.files(path = "data/")) {
 }
 
 awm <- read.csv(file = "data/awm19up18.csv", sep = ",")
-
 # The variables of the database are described in the ECB working paper No. 52: 
 # 'An Area-wide Model (AWM) for the euro area' by Gabrial Fagan, Jérôme Henry and Ricardo Mestre (January 2001)
 # https://www.ecb.europa.eu/pub/pdf/scpwps/ecbwp042.pdf?a1cb4280848b9c3557120a146468f3ab
@@ -128,7 +126,7 @@ hours_confboard <- readxl::read_excel(
 
 # Plot the data
 ggplot(data = hours_confboard, mapping = aes(x = period, y = value)) +
-  geom_line(color = "dodgerblue3") +
+  geom_line(linewidth = 1.2, color = "dodgerblue3") +
   facet_wrap(facets = ~ country, ncol = 4, scales = "free_y") +
   dbnomics() +
   ggtitle("Hours worked")
@@ -260,7 +258,7 @@ hours_filtered_levgr <- hours_filtered |>
 
 # Plot the interpolated levels and QoQ (sequential) growth rates
 ggplot(data = hours_filtered_levgr, mapping = aes(x = period, y = value, color = var)) +
-  geom_line() +
+  geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
   dbnomics() +
   ggtitle("Hours worked")
@@ -325,7 +323,7 @@ check <- bind_rows(
 
 # Plot the three time series
 ggplot(data = check, mapping = aes(x = period, y = value, group = var, linetype = var, color = var)) +
-  geom_line() +
+  geom_line(linewidth = 1.2) +
   dbnomics() +
   ggtitle("Comparison of hours worked series")
 
@@ -359,7 +357,7 @@ pop_eurostat_bycountry <- df |>
 pop_eurostat_bycountry |> 
   mutate(value = value / 10e6) |> 
   ggplot(mapping = aes(x = period, y = value)) +
-  geom_line(color = "dodgerblue3") +
+  geom_line(linewidth = 1.2, color = "dodgerblue3") +
   facet_wrap(facets = ~ country, ncol = 4, scales = "free_y") +
   dbnomics() +
   ggtitle("Working-age population (in millions)")
@@ -449,7 +447,7 @@ pop_filtered_levgr <- pop_filtered |>
 
 # Plot the three filtering methods
 ggplot(data = pop_filtered_levgr, mapping = aes(x = period, y = value, color = var)) +
-  geom_line() +
+  geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
   dbnomics() +
   ggtitle("Population")
@@ -516,7 +514,7 @@ check <- bind_rows(pop_a_ind, eurostat_data_ind, pop_ind)
 
 # Plot the data
 ggplot(data = check, mapping = aes(x = period, y = value, color = var)) +
-  geom_line() +
+  geom_line(linewidth = 1.2) +
   dbnomics() +
   ggtitle("Population")
 
@@ -672,7 +670,7 @@ pop |>
   tibble(ind2 = "Growth rates") |> 
   filter(period >= "1970-04-01") |> 
   ggplot(mapping = aes(x = period, y = value, color = var)) +
-  geom_line() +
+  geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
   dbnomics() +
   ggtitle("Quarterly population")
@@ -705,7 +703,7 @@ pop_filtered_levgr <- pop_filtered |>
   filter(period >= "1970-04-01")
 
 ggplot(data = pop_filtered_levgr, mapping = aes(x = period, y = value, color = var)) +
-  geom_line() +
+  geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
   dbnomics() +
   ggtitle("Population")
@@ -740,7 +738,7 @@ plot_df$var <- factor(plot_df$var)
 levels(plot_df$var) <- list_var
 
 ggplot(data = plot_df, mapping = aes(x = period, y = value)) +
-  geom_line(color = "dodgerblue3") +
+  geom_line(linewidth = 1.2, color = "dodgerblue3") +
   facet_wrap(facets = ~ var, scales = "free_y", ncol = 3) +
   dbnomics()
   

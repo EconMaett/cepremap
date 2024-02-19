@@ -42,7 +42,7 @@ scale_color_discrete <- function(...) {
 dbnomics <- function() {
   list(
     scale_x_date(expand = c(0, 0)),
-    scale_y_continuous(labels = function(x) { format(x, big.mark = " ")}),
+    scale_y_continuous(labels = function(x) { format(x, big.mark = " ") }),
     xlab(""),
     ylab(""),
     theme_bw(),
@@ -68,6 +68,24 @@ dbnomics <- function() {
   )
 }
 
+## theme ----
+theme <- theme_bw() +
+  theme(
+    strip.background = element_blank(),
+    strip.text       = element_text(size = 15),
+    title            = element_text(size = 16),
+    panel.border     = element_blank(),
+    panel.grid.major = element_line(linewidth = 1),
+    legend.key       = element_rect(colour = "white"),
+    legend.position  = "bottom",
+    legend.text      = element_text(size = 10),
+    axis.text        = element_text(size = 10),
+    plot.title       = element_text(hjust = 0.5)
+    )
+
+## blue_obs_macro ----
+blue_obs_macro <- "#0D5BA4"
+
 ## display_table ----
 display_table <- function(DT) {
   kable(DT) |> 
@@ -76,7 +94,6 @@ display_table <- function(DT) {
     column_spec(column = 1:ncol(DT), width_min = "4cm") |> 
     scroll_box(width = "100%", height = "500px")
 }
-
 
 ## chain ----
 # To chain tow datasets, we build a custom `chain()` function whose
