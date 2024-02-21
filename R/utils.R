@@ -101,11 +101,11 @@ display_table <- function(DT) {
 # `period`, `var`, and `value`.
 
 # It returns a data frame composed of chained values,
-# i.e. the dataframe "to rebase" will be chained to the "basis" dataframe.
+# i.e. the data frame "to rebase" will be chained to the "basis" data frame.
 
 # More specifically, the function:
-# - computes the growth rates from `value` in the dataframe of the 1st argument
-# - multiplies it with the value of a reference chosen in `value` in the dataframe of the 2nd argument
+# - computes the growth rates from `value` in the data frame of the 1st argument
+# - multiplies it with the value of a reference chosen in `value` in the data frame of the 2nd argument
 # - at the `date` specified in the 3rd argument.
 chain <- function(to_rebase, basis, date_chain) {
   

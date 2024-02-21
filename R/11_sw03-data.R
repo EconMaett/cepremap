@@ -1,6 +1,4 @@
 # 10 - Automating update of the Smets and Wouters (2003) database -----
-# Update the database used in the Bayesian estimation of the DSGE model 
-# proposed in Smets and Wouter (2003) for the Euro area.
 # URL: https://macro.cepremap.fr/article/2015-10/sw03-data/
 library(tidyverse)
 library(zoo)
@@ -8,7 +6,7 @@ library(kableExtra)
 library(rdbnomics)
 library(mFilter)
 source("R/utils.R")
-# Eight time series are used in the original estimation of Smets and Wouters (2003):
+# Smets and Wouters (2003) used eight time series:
 #   - GDP
 #   - GDP deflator
 #   - Consumption
@@ -18,23 +16,21 @@ source("R/utils.R")
 #   - Working-age population
 #   - Interest rate
 
-# We add three others:
+# We add three more:
 #   - Hours worked
 #   - Consumption deflator
 #   - Investment deflator
-
-# The original database of Smets and Wouters (2003) used employment as a proxy for the hours worked.
 
 # We merge data from:
 #   - The Area-Wide Model (AWM) proposed by Fagan et al. (2001).
 #   - The Conference Board
 #   - The European Central Bank (ECB)
-#   - Eurostat
+#   - EUROSTAT
 
 # The first three sources range from 1970 Q1 to the end of the 1990s.
-# Updates will be fed with Eurostat data for the eleven series from DBnomics.
+# Updates will be fed with EUROSTAT data for the eleven series from DBnomics.
 
-# All data are seasonally and working days adjusted, except for the interest rate and 
+# All series seasonally and working days adjusted, except for the interest rate and 
 # the population. We also smooth the population series.
 
 # We use the updated version of the AWM database composed of 19 Euro area countries.
@@ -72,7 +68,7 @@ awm <- read.csv(file = "data/awm19up18.csv", sep = ",")
 awm <- awm |> 
   mutate(
     gdp       = YER, # GDP (Real)
-    dfgdp     = YED, # GDP Deflator
+    defgdp    = YED, # GDP Deflator
     conso     = PCR, # Private Consumption (Real)
     defconso  = PCD, # Consumption Deflator
     inves     = ITR, # Gross Investment (Real)
@@ -87,7 +83,7 @@ awm <- awm |>
 # The database ends in 2017 Q4 ("2017-10-01").
 
 ### First special case: Hours worked ----
-# In 2003 no time series for hours worked existed,so the authors used a formula linking 
+# In 2003 no time series for hours worked existed, so the authors used a formula linking 
 # employment to the hours worked in their model. Today, Eurostat provides a quarterly
 # series starting in 2000 Q1.
 
@@ -97,7 +93,6 @@ awm <- awm |>
 # Find The Conference Board's Total Economy Database (TED) at:
 # https://www.conference-board.org/data/economydatabase/index.cfm
 ted <- "TED---Output-Labor-and-Labor-Productivity-1950-2015.xlsx"
-
 link_to_confboard <- paste0("https://www.conference-board.org/retrievefile.cfm?filename=", ted, "&type=subsite")
 
 if (! ted %in% list.files(path = "data/")) {
@@ -113,9 +108,9 @@ EA19_names <- c(
 
 # Read in the excel file and clean it
 hours_confboard <- readxl::read_excel(
-  path = paste0("data/", ted), 
+  path  = paste0("data/", ted), 
   sheet = "Total Hours Worked", 
-  skip = 2
+  skip  = 2
   ) |> 
   rename(country = Country) |> 
   filter(country %in% EA19_names) |> 
@@ -126,7 +121,7 @@ hours_confboard <- readxl::read_excel(
 
 # Plot the data
 ggplot(data = hours_confboard, mapping = aes(x = period, y = value)) +
-  geom_line(linewidth = 1.2, color = "dodgerblue3") +
+  geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ country, ncol = 4, scales = "free_y") +
   dbnomics() +
   ggtitle("Hours worked")
@@ -144,11 +139,10 @@ hours_confboard |>
   summarise(number_countries = length(country)) |> 
   tail(n = -12) |> 
   kable()
-
 # At the time of writing, the hours worked for five Central European countries, 
 # Estonia, Latvia, Lithuania, Slovak Republic, Slovenia are missing between 1970 and 1990.
 
-# We se the growth rates of the sum of hours worked series for the 14 countries 
+# Use growth rates of the sum of hours worked series for the 14 countries 
 # available before 1990 to complete the series of the sum of hours worked over the 
 # 19 countries after 1990.
 
@@ -281,8 +275,8 @@ valref <- filter(.data = hours_confboard_chained, period == "2000-07-01")$value
 hours_confboard_ind <- hours_confboard_chained |> 
   mutate(
     period = period,
-    var = "Annual hours (original, The Conference Board)",
-    value = value / valref,
+    var    = "Annual hours (original, The Conference Board)",
+    value  = value / valref,
     .keep = "none"
   )
 
@@ -308,9 +302,9 @@ valref <- hours |>
 
 hours_ind <- hours |> 
   mutate(
-    period,
-    var = "Quarterly hours (interpolated)",
-    value = value / valref$value,
+    period = period,
+    var    = "Quarterly hours (interpolated)",
+    value  = value / valref$value,
     .keep = "none"
   )
 
@@ -326,7 +320,6 @@ ggplot(data = check, mapping = aes(x = period, y = value, group = var, linetype 
   geom_line(linewidth = 1.2) +
   dbnomics() +
   ggtitle("Comparison of hours worked series")
-
 
 ggsave(filename = "03_TED_EA19_hours-comparison.png", path = "figures/11_sw03-data/", height = 12, width = 12)
 graphics.off()
@@ -346,10 +339,10 @@ EA19_code <- c(
 
 url_country <- paste0("A.NR.Y15-64.T.", paste0(EA19_code, collapse = "+"))
 
-df <- rdb("Eurostat", "demo_pjanbroad", mask = url_country) |> 
-  as_tibble()
+df <- rdb("Eurostat", "demo_pjanbroad", mask = url_country)
 
 pop_eurostat_bycountry <- df |>
+  as_tibble() |> 
   select(geo, period, value) |> 
   rename(country = geo) |> 
   filter(period >= "1970-01-01", period <= "2013-01-01")
@@ -357,7 +350,7 @@ pop_eurostat_bycountry <- df |>
 pop_eurostat_bycountry |> 
   mutate(value = value / 10e6) |> 
   ggplot(mapping = aes(x = period, y = value)) +
-  geom_line(linewidth = 1.2, color = "dodgerblue3") +
+  geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ country, ncol = 4, scales = "free_y") +
   dbnomics() +
   ggtitle("Working-age population (in millions)")
@@ -369,7 +362,7 @@ graphics.off()
 #   2) the data are annual, not quarterly
 
 #### Complete the population series before 1982 ----
-# Between 1970 and 1981 (included), Eurostat only provides the population
+# Between 1970 and 1981 (included), EUROSTAT only provides the population
 # for the then 16 Euro area member countries, excluding Malta, Slovenia, and Cyprus.
 pop_eurostat_bycountry |> 
   group_by(period) |> 
@@ -404,7 +397,6 @@ pop_chained <- chain(
 #### Convert the annual population series to quarterly data before 2000 ----
 # Once the annual data have been completed since 197',
 # they need to be disaggregated into quarterly data.
-
 pop_chained_q <- tibble(
   period = seq(
     from = as.Date("1970-01-01"),
@@ -475,8 +467,8 @@ valref <- filter(.data = pop_chained, period == "2005-01-01")$value
 pop_a_ind <- pop_chained |> 
   mutate(
     period = period,
-    var = "Annual population (original, Eurostat)",
-    value = value / valref
+    var    = "Annual population (original, Eurostat)",
+    value  = value / valref
   )
 
 # URL for quarterly population series from Eurostat
@@ -503,9 +495,9 @@ valref <- pop |>
 
 pop_ind <- pop |> 
   mutate(
-    period,
-    var = "Quarterly population (interpolated)",
-    value = value / valref$value,
+    period = period,
+    var    = "Quarterly population (interpolated)",
+    value  = value / valref$value,
     .keep = "none"
   )
 
@@ -526,7 +518,7 @@ graphics.off()
 # Eurostat without any transformation, through DBnomics.
 old_data <- bind_rows(awm, hours, pop)
 
-# URL for GDP/Consumption/Investment volumes and prices data
+#### URL GDP / Consumption / Investment & Prices -----
 variable_list <- c("B1GQ", "P31_S14_S15", "P51G")
 measure_list  <- c("CLV10_MEUR", "PD10_EUR")
 
@@ -564,7 +556,7 @@ d1 <- df |>
     ) |> 
   mutate(period, var, value, series_name, .keep = "none")
 
-# URL for wage series
+##### Wages -----
 df <- rdb(ids = "Eurostat/namq_10_a10/Q.CP_MEUR.SCA.TOTAL.D1.EA19")
 
 d2 <- df |> 
@@ -572,7 +564,7 @@ d2 <- df |>
   rename(var = unit) |> 
   mutate(var = "wage")
 
-# URL for hours and employment
+#### Hours & employment -----
 url_meas   <- "THS_HW+THS_PER"
 url_filter <- paste0("Q.", url_meas, ".TOTAL.SCA.EMP_DC.EA19")
 
@@ -584,7 +576,7 @@ d3 <- df |>
   mutate(var = if_else(condition = var == "THS_HW", true = "hours", false = "employ")) |> 
   mutate(period, var, value, series_name, .keep = "none")
 
-# URL for quarterly 3-month rates
+##### Quarterly 3-month rates -----
 df <- rdb(ids = "Eurostat/irt_st_q/Q.IRT_M3.EA")
 
 d4 <- df |> 
@@ -592,7 +584,7 @@ d4 <- df |>
   rename(var = geo) |> 
   mutate(var = "shortrate")
 
-# URL for quarterly population series
+#### Quarterly population series -----
 df <- rdb(ids = "Eurostat/lfsq_pganws/Q.THS_PER.T.TOTAL.Y15-64.POP.EA20")
 
 d5 <- df |> 
@@ -601,7 +593,13 @@ d5 <- df |>
   mutate(var = "pop") |> 
   filter(period >= "2005-01-01")
 
+# Combine the data
 recent_data <- bind_rows(d1, d2, d3, d4, d5)
+
+var_names <- unique(recent_data$series_name)
+
+recent_data <- recent_data |> 
+  select(-series_name)
 
 # Check the last available date for each variable
 max_date <- recent_data |> 
@@ -640,14 +638,13 @@ old_df <- awm |>
   bind_rows(hours)
 
 df1 <- chain(
-  basis = new_df,
-  to_rebase = old_df,
+  basis      = new_df,
+  to_rebase  = old_df,
   date_chain = "1999-01-01"
   )
 
 ### Population special case ----
-# Note: Apparently data frames and tibbles can store
-# time series `ts` objects now
+# Note: Apparently data frames and tibbles can store time series `ts` objects now
 
 #### Chain and smooth the population series ----
 # Population is a special case because we need to chain recent data with the 
@@ -682,7 +679,6 @@ graphics.off()
 # because they were not interpolated with he Kalman filter,
 # and thus we apply the Hodrick-Prescott (HP) filter to the series.
 popts <- ts(data = pop$value, start = c(1970, 1), frequency = 4)
-
 smoothed_popts <- hpfilter(popts, freq = 1600)$trend
 
 pop_StructTS <- pop |> 
@@ -717,8 +713,7 @@ pop <- pop_StructTS |>
 
 # Now we can produce the final update of the Smets and Wouters (2003) database.
 final_df <- bind_rows(df1, pop)
-
-plot_df <- final_df
+plot_df  <- final_df
 
 list_var <- list(
   "Real GDP [1]"             = "gdp",
@@ -738,7 +733,7 @@ plot_df$var <- factor(plot_df$var)
 levels(plot_df$var) <- list_var
 
 ggplot(data = plot_df, mapping = aes(x = period, y = value)) +
-  geom_line(linewidth = 1.2, color = "dodgerblue3") +
+  geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ var, scales = "free_y", ncol = 3) +
   dbnomics()
   
@@ -748,7 +743,7 @@ graphics.off()
 # You can download the 11 series directly here: shiny.cepremap.fr/data/EA_SW_rawdata.csv
 EA_SW_rawdata <- final_df |> 
   pivot_wider(names_from = var, values_from = value)
-# Note: Variable "series_name" is NA?
+
 write.csv(EA_SW_rawdata, file = "data/EA_SW_rawdata.csv", row.names = FALSE)
 
 # You can also download ready-to-use (normalized) data: shiny.cepremap.fr/data/EA_SW_data.csv
