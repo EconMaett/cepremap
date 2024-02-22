@@ -285,7 +285,7 @@ ggplot(data = plot_US_CMR_data, mapping = aes(x = period, y = value)) +
   dbnomics() +
   ggtitle("CMR data for the US")
 
-ggsave(filename = "03_CMR_US.png", path = "figures/09_cmr14-data/", height = 12, width = 12)
+ggsave(filename = "02_CMR_US.png", path = "figures/09_cmr14-data/", height = 12, width = 12)
 graphics.off()
 
 # Find the normalized data here: http://shiny.cepremap.fr/data/US_CMR_data.csv
