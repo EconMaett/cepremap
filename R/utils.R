@@ -60,7 +60,7 @@ dbnomics <- function() {
       label    = "DBnomics <http://db.nomics.world>",
       x        = structure(.Data = Inf, class = "Date"),
       y        = -Inf,
-      hjust    = 1.1,
+      hjust    =  1.1,
       vjust    = -0.4,
       col      = "grey",
       fontface = "italic"
