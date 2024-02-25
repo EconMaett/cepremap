@@ -9,7 +9,7 @@
 #    5. Investment deflator
 #    6. Wages
 #    7. Hours worked
-#    8. Loans to NFCs
+#    8. Loans to non-financial corporations (NFCs)
 #    9. Short-term interest rate
 #   10. Entrepreneurial net worth
 #   11. Credit spread

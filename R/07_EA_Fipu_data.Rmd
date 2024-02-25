@@ -118,9 +118,14 @@ The database will contain the following series:
 First we get the historical series built by [@ppp14]. Problem is, the series are not all directly usable: the series of social contribution by contributors do not exist before 1991. 
 
 ```{r}
+library(tidyverse)
+library(zoo)
+library(kableExtra)
+library(rdbnomics)
+source(file = "utils.R")
 url <- "PPP_raw.xls"
 
-ppp <- read_excel(url, skip = 1)
+ppp <- readxl::read_excel(url, skip = 1)
 
 ppp %<>% 
   transmute(period      =   as.Date(as.yearqtr(`MILL. EURO, RAW DATA, NON-SEAS. ADJUSTED, SMOOTHED ESTIMATES`, format="%YQ%q")),

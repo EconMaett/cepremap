@@ -48,7 +48,7 @@ dbnomics <- function() {
     theme_bw(),
     theme(
       legend.position   = "bottom",
-      legend.direction  = "vertical",
+      legend.direction  = "horizontal",
       legend.background = element_rect(fill = "white", colour = NA),
       legend.key        = element_blank(),
       panel.background  = element_rect(fill = "white", colour = NA),
@@ -107,35 +107,40 @@ display_table <- function(DT) {
 # - computes the growth rates from `value` in the data frame of the 1st argument
 # - multiplies it with the value of a reference chosen in `value` in the data frame of the 2nd argument
 # - at the `date` specified in the 3rd argument.
-chain <- function(to_rebase, basis, date_chain) {
+chain <- function(to_rebase, basis, date_chain = "2000-01-01", is_basis_the_recent_data = TRUE) {
   
   date_chain <- as.Date(date_chain, format = "%Y-%m-%d")
   
-  valref <- basis |> 
-    filter(period == date_chain) |> 
-    mutate(
-      var,
-      value_ref = value,
-      .keep = "none"
-    )
+  valref <- basis |>
+    filter(period == date_chain) |>
+    mutate(var, value_ref = value, .keep = "none") 
   
-  res <- to_rebase |> 
-    filter(period <= date_chain) |> 
-    arrange(desc(period)) |> 
-    group_by(var) |> 
-    mutate(
-      growth_rate = c(1, value[-1] / lag(value)[-1])
-    ) |> 
-    full_join(y = valref, by = "var") |> 
-    group_by(var) |> 
-    mutate(
-      period,
-      value = cumprod(growth_rate) * value_ref,
-      .keep = "none"
-    ) |> 
-    ungroup() |> 
-    bind_rows(filter(basis, period > date_chain)) |> 
-    arrange(period)
+  # If chain is to update old values to match recent values
+  if (is_basis_the_recent_data) { 
+    res <- to_rebase |>
+      filter(period <= date_chain) |>
+      arrange(desc(period)) |>
+      group_by(var) |> 
+      mutate(growth_rate = c(1, value[-1]/lag(x = value)[-1])) |>
+      full_join(y = valref, by = join_by(var)) |>
+      group_by(var) |>
+      mutate(period, value = cumprod(growth_rate) * value_ref, .keep = "none") |>
+      ungroup() |>
+      bind_rows(filter(basis, period > date_chain))
+    
+  } else {
+    # If chain is to update recent values to match old values
+    res <- to_rebase |>
+      filter(period >= date_chain) |>
+      arrange(period) |>
+      group_by(var) |>
+      mutate(growth_rate = c(1, value[-1]/lag(x = value, n = 1)[-1])) |>
+      full_join(y = valref, by = join_by(var)) |>
+      group_by(var) |>
+      mutate(period, value = cumprod(growth_rate) * value_ref, .keep = "none") |>
+      ungroup() |>
+      bind_rows(filter(basis, period < date_chain))
+  }
   
   return(res)
 }
