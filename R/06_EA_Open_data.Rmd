@@ -94,11 +94,10 @@ df <- rdb("OECD","QNA",mask=filter)
 imports <- 
   df %>% 
   select(period,value,country=Country) %>% 
-  filter(year(period)>=1979) %>% 
-  mutate(country = plyr::mapvalues(country, from = partner_country_iso3, to = partner_country_name))
+  filter(year(period)>=1979)
 
 ggplot(imports ,aes(period,value)) +
-  geom_line(colour = blueObsMacro) +
+  geom_line(colour = blue_obs_macro) +
   facet_wrap(~country, ncol = 3, scales = "free_y") +
   scale_x_date(expand = c(0.01,0.01)) +
   theme + xlab(NULL) + ylab(NULL) +
@@ -146,7 +145,7 @@ imports_growth_rate <-
   filter(year(period)>=1980)
 
 ggplot(imports_growth_rate,aes(period,value)) +
-  geom_line(colour = blueObsMacro) +
+  geom_line(colour = blue_obs_macro) +
   facet_wrap(~country, ncol = 3, scales = "free_y") +
   scale_x_date(expand = c(0.01,0.01)) +
   theme + xlab(NULL) + ylab(NULL) +
