@@ -1,12 +1,12 @@
-# 06 - Automating update of an international database for the Euro Area ----
+# 06 - International database for the Euro Area ----
 # URL: https://macro.cepremap.fr/category/data2.html
 library(tidyverse)
 library(zoo)
 library(rdbnomics)
 library(kableExtra)
 source(file = "R/utils.R")
-# Create an international quarterly data base for the Euro area
-# that can be updated automatically:
+fig_path <- "figures/06_open-EA-data/"
+# International quarterly data base for the Euro area:
 #   - Foreign demand (without trade between Euro area countries)
 #   - Foreign interest rate
 #   - Oil prices
@@ -38,19 +38,24 @@ partner_country_name <- c(
   "Brazil", "India", "Indonesia", "South Korea", "China"
 )
 
+url_country_iso3 <- paste0(partner_country_iso3, collapse = "+")
+url_filter        <- paste0(url_country_iso3, ".P7.VOBARSA.Q")
+df <- rdb(provider_code = "OECD", dataset_code = "QNA", mask = url_filter)
+
 imports <- df |> 
   select(period, value, country = Country) |> 
   filter(year(period)>= 1979)
-# mutate(country = plyr::mapvalues(country, from = partner_country_iso3, to = partner_country_name))
 
 ggplot(data = imports, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, colour = blue_obs_macro) +
   facet_wrap(facets = ~ country, ncol = 3, scales = "free_y") +
+  my_theme() +
   ggtitle(
     label = "Imports of goods and services",
     subtitle="(volume, seasonally adjusted, national currency)"
     )
-ggsave(filename = "01_imports.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+
+ggsave(filename = "01_imports.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### China special case ----
@@ -93,13 +98,13 @@ imports_growth_rate <- imports |>
 ggplot(data = imports_growth_rate, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ country, ncol = 3, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle(
     label = "Growth rates of imports of goods and services",
     subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)"
   )
 
-ggsave(filename = "02_imports_gr.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+ggsave(filename = "02_imports_gr.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 min_time <- imports_growth_rate |> 
@@ -108,10 +113,11 @@ min_time <- imports_growth_rate |>
   ungroup()
 
 kable(min_time)
+# We have incomplete series only for Brazil, China, India and Indonesia.
 
 ### Eurozone exports of goods to main commercial partners ----
 # (Values in US Dollars, annual)
-# Use the value of exports of goodds, free on board (FOB),
+# Use the value of exports of goods, free on board (FOB),
 # from the IMF DOT database.
 
 # Exporter countries of the Eurozone
@@ -169,8 +175,8 @@ start_sample[, c(1, 9:15)] |>
   kable()
 
 #### Special case: Belgium-Luxembourg ----
-# We have data fro Belgium-Luxembourg as a single exporter until 1997.
-# So we compute extra-area trade of Belgium and Luxembourg since 1997 to create
+# Belgium-Luxembourg is a single exporter until 1997.
+# Compute extra-area trade of Belgium and Luxembourg since 1997 to create
 # a series for the whole period.
 bilatx_belux <- bilatx |> 
   filter(exporter %in% c("Belgium", "Luxembourg")) |> 
@@ -207,10 +213,10 @@ plot_export <- rbind(export_15, export_all)
 
 ggplot(data = plot_export, mapping = aes(x = period, y = value, color = var)) +
   geom_line(linewidth = 1.2) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Extra-Eurozone exports, with / without Eastern countries")
 
-ggsave(filename = "03_exports-east.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+ggsave(filename = "03_exports-east.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # Before 2003, the series are very similar.
@@ -247,17 +253,16 @@ plot_export2 <- bind_rows(
 
 ggplot(data = plot_export2, mapping = aes(x = period, y = value2, color = var)) +
   geom_line(linewidth = 1.2) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Growth rate of extra-area exports, with 10 and 14 partners")
 
-ggsave(filename = "04_imports-brics.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+ggsave(filename = "04_imports-brics.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Weights of the main commercial partners in Eurozone exports ----
 # For each commercial partner `i` we compute `\alpha_{i}`,
 # the share of EA exports `X` among all EA exports towards these partners,
 # at time `i`.
-
 # `\alpha_{i,t} \equals \frac{X_{i,t}}{\sum_{i}X_{i,t}}`
 
 # Sum of exports of Euro area by importer
@@ -302,10 +307,10 @@ alphas <- bind_rows(
 ggplot(data = alphas, mapping = aes(x = period, y = alpha)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ country, ncol = 3, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle("Share of Eurozone exports among all Eurozone exports")
 
-ggsave(filename = "05_exports-ea.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+ggsave(filename = "05_exports-ea.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Final index ----
@@ -352,10 +357,10 @@ plot_wd <- bind_rows(
 ggplot(data = plot_wd, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ var, ncol = 1, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle("Foreign demand for the Eurozone, base 100 = 2010")
 
-ggsave(filename = "06_foreign-demand-ea.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+ggsave(filename = "06_foreign-demand-ea.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Foreign interest rate ----
@@ -374,10 +379,10 @@ shortrate <- df |>
 
 ggplot(data = shortrate, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Foreign interest rate")
 
-ggsave(filename = "07_foreign-interest-rate.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+ggsave(filename = "07_foreign-interest-rate.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Oil prices ----
@@ -391,10 +396,10 @@ oil_prices <- df |>
 
 ggplot(data = oil_prices, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Crude oil prices")
 
-ggsave(filename = "08_oil-price.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+ggsave(filename = "08_oil-price.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Real effective exchange rate ----
@@ -403,9 +408,7 @@ graphics.off()
 df <- rdb(ids = "BIS/eer/M.R.N.XM")
 
 reer <- df |> 
-  mutate(
-    period = paste(year(period), quarter(period), sep = "-")
-  ) |> 
+  mutate(period = paste(year(period), quarter(period), sep = "-")) |> 
   group_by(period) |> 
   summarise(value = mean(value)) |> 
   ungroup() |> 
@@ -414,10 +417,10 @@ reer <- df |>
 
 ggplot(data = reer, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Real Effective Exchange Rate")
 
-ggsave(filename = "09_reer.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+ggsave(filename = "09_reer.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Extra Euro area imports and exports ----
@@ -443,10 +446,10 @@ trade <- df |>
 ggplot(data = trade, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ var) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Extra euro area imports / exports, in volume, seasonally adjusted")
 
-ggsave(filename = "10_ea-imports-exports.png", path = "figures/06_open-EA-data/", height = 12, width = 12)
+ggsave(filename = "10_ea-imports-exports.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Final international database for the Euro area ----
@@ -485,6 +488,7 @@ EA_Open_data <- EA_Open_rawdata |>
   mutate(
     period,
     world_demand,
+    foreign_rate,
     oil_prices,
     reer,
     imports,
@@ -500,5 +504,29 @@ EA_Open_data |>
 
 # Download the ready-to-use data here: http://shiny.cepremap.fr/data/EA_Open_data.csv
 
-# END
+# Plot the final database
+list_var <- list(
+  "Foreign demand (w/o intra Euro area)" = "world_demand",
+  "Foreign interest rate" = "foreign_rate",
+  "Oil prices"  = "oil_prices",
+  "Real effective exchange rate" = "reer",
+  "Exports" = "exports",
+  "Imports" = "imports"
+)
 
+plot_EA_Open_data <- EA_Open_data |> 
+  pivot_longer(cols = -period, names_to = "var", values_to = "value") |> 
+  mutate(period = as.Date(zoo::as.yearqtr(period)), var = as.factor(var))
+
+levels(plot_EA_Open_data$var) <- list_var
+
+ggplot(data = plot_EA_Open_data, mapping = aes(x = period, y = value)) +
+  geom_line(linewidth = 1.2, color = blue_obs_macro) +
+  facet_wrap(facets = ~ var, ncol = 3, scales = "free_y") +
+  my_theme() +
+  ggtitle("International database for the Euro Area")
+
+ggsave(filename = "11_final.png", path = fig_path, height = 12, width = 12)
+graphics.off()
+
+# END

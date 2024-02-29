@@ -1,4 +1,4 @@
-# 09 - Automating update of the Christiano, Motto and Rostagno (CMR) (2014) database for the United States -----
+# 09 - Christiano, Motto and Rostagno (CMR) (2014) database for the United States -----
 # URL: https://macro.cepremap.fr/article/2016-06/cmr14-data/
 
 # Twelve series are needed for the Christiano, Motto and Rostagno (CMR) model:
@@ -31,18 +31,12 @@ library(rdbnomics)
 library(fredr)
 library(kableExtra)
 source("R/utils.R")
+fig_path <- "figures/09_cmr14-data/"
 # Use Thomas Brand's `FredR` function
 # - GitHub: https://github.com/thomasbrand/fredR
 
 # Use the `fredr` R package instead
 # - Website: https://sboysel.github.io/fredr/
-
-# Check out the "European Indicators" repository
-# https://github.com/thomasbrand/european_indicators
-
-# The "riskshocks" Shiny project
-# - GitHub: https://github.com/thomasbrand/riskshocks
-# - Website: http://shiny.cepii.fr/
 
 ## Raw data from BEA, BIS, BLS and OECD ----
 # These can be retrieved from DBnomics
@@ -74,7 +68,7 @@ df <- rdb(
   ) |> 
   select(var_name = series_name, var_code = series_code, value, period)
 
-# Rename the avriable codes
+# Rename the variable codes
 df <- df |> 
   mutate(
     var_code = case_when(
@@ -155,10 +149,10 @@ conso <- conso_rate |>
 ggplot(data = conso, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ var_name, ncol = 3, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle("Real Personal Consumption Expenditures")
 
-ggsave(filename = "01_consumption.png", path = "figures/09_cmr14-data/", height = 12, width = 12)
+ggsave(filename = "01_consumption.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # Create variables "var_code" and "var_name"
@@ -282,10 +276,10 @@ levels(plot_US_CMR_data$var) <- list_var
 ggplot(data = plot_US_CMR_data, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ var, ncol = 3, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle("CMR data for the US")
 
-ggsave(filename = "02_CMR_US.png", path = "figures/09_cmr14-data/", height = 12, width = 12)
+ggsave(filename = "02_CMR_US.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # Find the normalized data here: http://shiny.cepremap.fr/data/US_CMR_data.csv

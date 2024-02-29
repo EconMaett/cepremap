@@ -81,7 +81,7 @@ my_theme <-
 ```{r}
 ggplot(filter(elec2,var=="Total consumption"),
        aes(month_day,value,colour=year,group=year))+
-  geom_line(size=1)+
+  geom_line(linewidth=1)+
   scale_y_continuous(labels = scales::number_format(accuracy = 1))+
   scale_x_discrete(breaks=breaks_vec,
                    labels=labels_vec)+
@@ -101,7 +101,7 @@ ggplot(filter(elec2,var=="Total consumption"),
 ```{r}
 ggplot(filter(elec2,var=="Total consumption"),
        aes(month_day,value,colour=year,group=year))+
-  geom_line(size=1)+
+  geom_line(linewidth=1)+
   scale_y_continuous(labels = scales::number_format(accuracy = 1))+
   scale_x_discrete(breaks=breaks_vec,
                    labels=labels_vec)+

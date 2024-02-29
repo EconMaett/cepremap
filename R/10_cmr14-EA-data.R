@@ -1,5 +1,5 @@
-# 10 - Automating update of a finance database for the Euro Area ----
-# Update the database used in Christiano et al. (2014), but for the
+# 10 - Finance database for the Euro Area ----
+# Database used in Christiano et al. (2014), but for the
 # Euro area, on the basis of the Smets and Wouters (2003) database.
 # URL: https://macro.cepremap.fr/article/2016-06/cmr14-EA-data/
 library(tidyverse)
@@ -7,24 +7,25 @@ library(zoo)
 library(rdbnomics)
 library(kableExtra)
 source(file = "R/utils.R")
+fig_path <- "figures/10_cmr14-EA-data/"
 # Four financial time series are used in Christiano et al. (2014):
-#   - Loans to non-financial corporations
+#   - Loans to non-financial corporations (NFC)
 #   - Bank lending rates
 #   - Entrepreneurial net worth
 #   - Long-term interest rates
 
 # We add two series:
 #   - House prices
-#   - Loans to households
+#   - Loans to households (HH)
 
-# The sources are:
+# From the sources:
 #   - The Area-Wide Model (AWM) proposed by Fagan et al. (2001)
 #   - International Financial Statistics (IFS) from the International Monetary Fund (IMF)
 #   - Bank of International Settlements (BIS)
 #   - European Central Bank (ECB)
 
-## Loans to non-financial corporations and to households -----
-# We download the loan series from the Bank for International Settlements (BIS).
+## Loans to NFC & HH -----
+# Loan series from the Bank for International Settlements (BIS).
 EAtot_code  <- c("DE", "FI", "FR", "IT", "PT", "AT", "GR", "IE", "NL", "BE", "ES", "XM")
 url_country <- paste0(EAtot_code, collapse = "+")
 url_filter  <- paste0("Q.", url_country, ".N+H.A.M.XDC.A")
@@ -43,6 +44,7 @@ loans <- df |>
   filter(year(period) >= 1980) |> 
   arrange(var, period)
 
+# Loans to non-financial corporations (NFC)
 loans_nfc <- loans |> 
   filter(substr(x = var, start = 6, stop = 6) == "N") |> 
   mutate(var = "loans_nfc")
@@ -52,6 +54,7 @@ varname_nfc <- unique(as.character(filter(.data = loans_nfc, country == "XM")$se
 loans_nfc <- loans_nfc |> 
   select(-series_name)
 
+# Loans to households (HH)
 loans_hh <- loans |> 
   filter(substr(x = var, start = 6, stop = 6) == "H") |> 
   mutate(var = as.factor("loans_hh"))
@@ -61,8 +64,7 @@ varname_hh <- unique(as.character(filter(.data = loans_hh, country == "XM")$seri
 loans_hh <- loans_hh |> 
   select(-series_name)
 
-# Check the first date available for loans to non-financial corporations (NFC) 
-# and households (HH), where XM stands for the Euro area.
+# First date for loans to NFC & HH (XM = Euro area)
 loans_nfc |> 
   group_by(country) |> 
   summarise(first_date = min(period)) |> 
@@ -77,7 +79,7 @@ loans_hh |>
   ungroup() |> 
   kable()
 
-# Retain countries that are available since 1990
+# Retain countries available since 1990
 available_countries <- filter(.data = loans_nfc, period == "1990-10-01")$country
 
 loans_nfc_countries <- loans_nfc |> 
@@ -87,14 +89,14 @@ loans_nfc_EA <- loans_nfc |>
   filter(country == "XM", period >= "1999-01-01") |> 
   mutate(country = "EA")
 
-# Plot credit to NFC
+# Plot loans to NFC
 ggplot(data = bind_rows(loans_nfc_countries, loans_nfc_EA), mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ country, ncol = 3, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle("Loans to non-financial corporations (billions of euro)")
 
-ggsave(filename = "01_BIS_credit_nfc.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "01_BIS_credit_nfc.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 loans_hh_countries <- loans_hh |> 
@@ -108,14 +110,13 @@ loans_hh_EA <- loans_hh |>
 ggplot(data = bind_rows(loans_hh_countries, loans_hh_EA), mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ country, ncol = 3, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle("Loans to households and NPISHs (billions of euro)")
 
-ggsave(filename = "02_BIS_credit_hh.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "02_BIS_credit_hh.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Compare the raw sum over the available countries and the
-# and the same chained to the EA series.
+# Raw sum over the available countries & chained to the EA series.
 loans_nfc_countries <- loans_nfc_countries |> 
   select(-var) |> 
   mutate(var = country)
@@ -156,10 +157,10 @@ loans_nfc_EA <- loans_nfc_EA |>
 
 ggplot(data = bind_rows(loans_nfc_sumAll, loans_nfc_EA, loans_nfc_chained), mapping = aes(x = period, y = value, color = var)) +
   geom_line(linewidth = 1.2) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Loans to non-financial corporations (billions of euro) [1]")
 
-ggsave(filename = "03_BIS_credit_nfc_chained.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "03_BIS_credit_nfc_chained.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 print(varname_nfc)
@@ -204,10 +205,10 @@ loans_hh_EA <- loans_hh_EA |>
 
 ggplot(data = bind_rows(loans_hh_sumAll, loans_hh_EA, loans_hh_chained), mapping = aes(x = period, y = value, color = var)) +
   geom_line(linewidth = 1.2) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Loans to households and NPISHs (billions of euro) [1]")
 
-ggsave(filename = "04_BIS_credit_hh_chained.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "04_BIS_credit_hh_chained.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 print(varname_hh)
@@ -241,7 +242,7 @@ url_country  <- paste0(country_code, collapse = "+")
 
 # Download the 5 countries' lending rates from the OECD
 url_filter <- paste0(url_country, ".IR3TIB01.ST.Q")
-df <- rdb("OECD", "MEI", mask = url_filter)
+df <- rdb(provider_code = "OECD", dataset_code = "MEI", mask = url_filter)
 
 lendingrate_bycountry <- df |> 
   select(country = LOCATION, period, value) |> 
@@ -249,7 +250,7 @@ lendingrate_bycountry <- df |>
 
 # Download the 5 countries' PPP GDP from WEO
 url_filter <- paste0(url_country, ".PPPGDP")
-df <- rdb("IMF", "WEO:latest", mask = url_filter)
+df <- rdb(provider_code = "IMF", dataset_code = "WEO:latest", mask = url_filter)
 
 ppppgdp <- df |> 
   filter(period == "1995-01-01") |> 
@@ -293,10 +294,10 @@ dataplot <- bind_rows(lendingrate_recent, lendingrate_old)
 
 ggplot(data = dataplot, mapping = aes(x = period, y = value, color = var)) +
   geom_line(linewidth = 1.2) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Bank lending rate (%)")
 
-ggsave(filename = "05_ECB_lendingrates.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "05_ECB_lendingrates.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Chain historical and recent data ----
@@ -351,12 +352,15 @@ longrate_recent <- df |>
 
 dataplot <- bind_rows(tibble(longrate_recent, ind = "recent"), tibble(longrate_old, ind = "old"))
 
+min(longrate_recent$period)
+# Recent interest rate now available from 1990-10-01,
+# not just since 2001-01-01
 ggplot(data = dataplot, mapping = aes(x = period, y = value, color = ind)) +
   geom_line(linewidth = 1.2) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Long-term interest rate (%)")
 
-ggsave(filename = "06_ECB_lendingrates_longterm.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "06_ECB_lendingrates_longterm.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 longrate <- chain(
@@ -381,10 +385,10 @@ networth <- df |>
 
 ggplot(data = networth, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Entrepreneurial net worth (index)")
 
-ggsave(filename = "07_ECB_entrepreneurialnetworth.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "07_ECB_entrepreneurialnetworth.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # The Dow Jones index from the ECB is described as
@@ -401,10 +405,10 @@ houseprice <- df |>
 
 ggplot(data = houseprice, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  dbnomics() +
+  my_theme() +
   ggtitle("House prices (index)")
 
-ggsave(filename = "08_ECB_houseprices.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "08_ECB_houseprices.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # House prices come from the BIS and are described as
@@ -452,9 +456,9 @@ levels(plot_df$var) <- list_var
 ggplot(data = plot_df, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ var, scales = "free_y", ncol = 3) +
-  dbnomics()
+  my_theme()
   
-ggsave(filename = "09_final.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "09_final.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # You can also download the six final series here: http://shiny.cepremap.fr/data/EA_Finance_rawdata.csv
@@ -464,10 +468,10 @@ EA_Finance_rawdata <- final_df |>
 write.csv(EA_Finance_rawdata, file = "data/EA_Finance_rawdata.csv", row.names = FALSE)
 
 ## Final CMR database for the Euro Area ----
-# We want to build a data base similar to the one in Christiano et al. (2014)
-# but on the basis of the Smets and Wouters (2003) data base.
+# Build a data base similar to the one in Christiano et al. (2014)
+# on the basis of the Smets and Wouters (2003) data base.
 
-# The data base will begin in 1980 Q1, as the financial series are not
+# Start in 1980 Q1, as the financial series are not
 # available before that time.
 
 # You can download the raw series here: http://shiny.cepremap.fr/data/EA_CMR_rawdata.csv
@@ -538,10 +542,10 @@ levels(plot_EA_CMR_data$var) <- list_var
 ggplot(data = plot_EA_CMR_data, mapping = aes(x = period, y = value)) +
   geom_line(linewidth = 1.2, color = blue_obs_macro) +
   facet_wrap(facets = ~ var, ncol = 3, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle("CMR data for the Euro area")
 
-ggsave(filename = "10_CMR_EA.png", path = "figures/10_cmr14-EA-data/", height = 12, width = 12)
+ggsave(filename = "10_CMR_EA.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # Download the ready-to-use (normalized) data here: http://shiny.cepremap.fr/data/EA_CMR_data.csv

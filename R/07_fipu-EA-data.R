@@ -1,4 +1,4 @@
-# 07 - Automating update of a fiscal database for the Euro Area ----
+# 07 - Fiscal database for the Euro Area ----
 # URL: https://macro.cepremap.fr/article/2019-11/fipu-EA-data/
 library(tidyverse)
 library(zoo)
@@ -7,6 +7,7 @@ library(rdbnomics)
 library(seasonal)
 library(gridExtra)
 source(file = "R/utils.R")
+fig_path <- "figures/07_EA_Fipu_data/"
 # Build the database following Paredes et al. (2014).
 # The following series are included:
 #   - Direct taxes
@@ -31,7 +32,7 @@ source(file = "R/utils.R")
 ppp <- readxl::read_excel(path = "data/PPP_raw.xls", sheet = 1, skip = 1)
 
 ppp <- ppp |> 
-  mutate(across(.cols = SCR:SCE, .fns = ~ gsub(pattern = "-", replacement = "", x = .x))) |> 
+  # mutate(across(.cols = SCR:SCE, .fns = ~ gsub(pattern = "-", replacement = NA, x = .x))) |> 
   mutate(
     period   = as.Date(as.yearqtr(`MILL. EURO, RAW DATA, NON-SEAS. ADJUSTED, SMOOTHED ESTIMATES`, format = "%YQ%q")),
     totexp   = TOE,             # Total expenditures
@@ -57,7 +58,7 @@ ppp <- ppp |>
 # remains stable before 1991 to reconstruct the series before that time.
 # Calculate the ratio of social contributions for the first data point
 prcnt <- ppp |> 
-  mutate(scrt = scr/sct, .keep = "none") |> 
+  mutate(scr_sct = scr/sct, .keep = "none") |> 
   na.omit() |> 
   first() |> 
   as.numeric()
@@ -79,7 +80,8 @@ ppp <- ppp |>
   select(-sct) |> 
   pivot_longer(cols = -period, names_to = "var", values_to = "value") |> 
   bind_rows(scr_sce_before91) |> 
-  arrange(var, period)
+  arrange(var, period) |> 
+  filter(!is.na(value)) # Remove the NAs in scr, sce before 1991
 
 max_date <- ppp |> 
   group_by(var) |> 
@@ -93,7 +95,6 @@ kable(max_date)
 # data from EUROSTAT through DBnomics.
 
 ### Special case: Social contributions ----
-
 #### Download annual data ----
 var_taken <- c(
   "D613", # Annual Households' actual social contributions (D613) for general govt only (S13)
@@ -125,7 +126,7 @@ data_1 <- df |>
 
 #### From annual to quarterly data ----
 # Quarterly net social contributions, receivable (D61REC) for general govt only (S13)
-df <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D61REC.EA19")
+df <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D61REC.EA19")
 
 qsct <- df |> 
   mutate(period, var = "sct", value, .keep = "none") |> 
@@ -192,9 +193,9 @@ plot_treatment <- bind_rows(qscr_uncomplete, qsce_uncomplete) |>
 ggplot(data = plot_treatment, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ var, ncol = 2, scales = "free_y") +
-  dbnomics()
+  my_theme()
 
-ggsave(filename = "01_SCR-SCT.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "01_SCR-SCT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Most recent data ----
@@ -203,7 +204,7 @@ graphics.off()
 # deduce the latest contributions of households and employers
 
 # Quarterly employers SSC for total economy
-df <- rdb("Eurostat", "namq_10_gdp", mask = "Q.CP_MEUR.NSA.D12.EA19")
+df <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_gdp", mask = "Q.CP_MEUR.NSA.D12.EA19")
 
 qscr_toteco <- df |> 
   as_tibble() |> 
@@ -263,15 +264,15 @@ plot_treatment <- bind_rows(qscr_uncomplete, qsce_uncomplete) |>
 ggplot(data = plot_treatment, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ var, ncol = 2, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle("Social contribution forward chaining")
 
-ggsave(filename = "02_SC-chain.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "02_SC-chain.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Special case: Unemployment benefits ----
 # Retrieve government social expenditures and compute their quarterly share for every year.
-socialexp <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D62PAY.EA19") |> 
+socialexp <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D62PAY.EA19") |> 
   as_tibble() |> 
   mutate(year = year(period)) |> 
   select(period, value, year) |> 
@@ -284,7 +285,7 @@ socialexp <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D62PAY.E
 # put them in a quarterly table and use the previous ratio
 # of quarterly social expenditures to compute the quarterly 
 # unemployment benefits
-df <- rdb("Eurostat", "gov_10a_exp", mask = "A.MIO_EUR.S13.GF1005.TE.EA19")
+df <- rdb(provider_code = "Eurostat", dataset_code = "gov_10a_exp", mask = "A.MIO_EUR.S13.GF1005.TE.EA19")
 
 recent_unemp <- df |> 
   as_tibble() |> 
@@ -316,10 +317,10 @@ data_plot <- ppp |>
 
 ggplot(data = data_plot, mapping = aes(x = period, y = value, color = var)) +
   geom_line(linewidth = 1.2) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Unemployment benefits series comparison")
 
-ggsave(filename = "03_unemp-comp.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "03_unemp-comp.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Chaining recent data with historical ----
@@ -343,10 +344,10 @@ var_taken <- c(
 # Build the URL, fetch the data and convert it to a tibble
 url_variables <- paste0(var_taken, collapse = "+")
 url_filter    <- paste0("Q.MIO_EUR.NSA.S13.", url_variables, ".EA19")
-data_1        <- rdb("Eurostat", "gov_10q_ggnfa", mask = url_filter)
+data_1        <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = url_filter)
 
 # Government consolidated gross debt is in a different dataset
-data_2 <- rdb("Eurostat", "gov_10q_ggdebt", mask = "Q.GD.S13.MIO_EUR.EA19")
+data_2 <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggdebt", mask = "Q.GD.S13.MIO_EUR.EA19")
 
 # Bind the two data frames
 recent_data <- bind_rows(data_1, data_2) |> 
@@ -356,7 +357,6 @@ recent_data <- bind_rows(data_1, data_2) |>
 var_names <- c("pubcons", "pubinves", "tfs", "salaries", "subs", "indirtax", "dirtax", "intpay", "totexp", "totrev", "debt")
 
 recent_data$var <- plyr::mapvalues(x = recent_data$var, from = c(var_taken, "GD"), to = var_names)
-
 
 # Include the series of social contributions
 var_names <- c(var_names, "sce", "scr", "unemp")
@@ -390,16 +390,12 @@ chained_data <- recent_data %>%
   select(period, var, value) %>%
   mutate(Origin = "Chained")
 
-# Identify duplicates
-chained_data |> 
-  summarise(n = n(), .by = c(period, var)) |>
-  filter(n > 1L) |> tail()
-
-# Add `na.omit()`
 to_deseason <- chained_data |>
-  na.omit() |> 
   select(-Origin) |> 
-  pivot_wider(names_from = var, values_from = value)
+  pivot_wider(
+    names_from = var, values_from = value,
+    values_fn = mean
+    )
 
 deseasoned <- bind_rows(
   lapply(
@@ -407,7 +403,7 @@ deseasoned <- bind_rows(
     FUN = function(var) deseason(source_df = to_deseason, var_arrange = var) |> 
       mutate(Origin = "Final series")
       )
-)
+  )
 
 ppp <- ppp |> 
   mutate(Origin = "Historical data")
@@ -432,17 +428,17 @@ plot_totexp <- to_plot |>
 p1 <- ggplot(data = plot_totrev, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Total revenue")
 
 p2 <- ggplot(data = plot_totexp, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Total expenditures")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "04_revenue-expenditures.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "04_revenue-expenditures.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Public direct spending ----
@@ -468,17 +464,17 @@ plot_inves <- to_plot |>
 p1 <- ggplot(data = plot_cons, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Public consumption")
 
 p2 <- ggplot(data = plot_inves, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Public investment")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "05_consumption-investment.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "05_consumption-investment.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Specific spending ----
@@ -501,17 +497,17 @@ plot_subs <- to_plot |>
 p1 <- ggplot(data = plot_salaries, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Compensation of employees")
 
 p2 <- ggplot(data = plot_subs, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Subsidies")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "06_compensation-subsidies.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "06_compensation-subsidies.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Taxes ----
@@ -533,18 +529,17 @@ plot_dir <- to_plot |>
 p1 <- ggplot(data = plot_indir, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Indirect taxation")
 
 p2 <- ggplot(data = plot_dir, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Direct taxation")
 
-
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "07_indirect-direct-taxation.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "07_indirect-direct-taxation.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Debt and interest payments ----
@@ -567,17 +562,17 @@ plot_intpay <- to_plot |>
 p1 <- ggplot(data = plot_intpay, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Interest payments")
 
 p2 <- ggplot(data = plot_debt, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("General government debt")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "08_interest-debt.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "08_interest-debt.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Total social transfers and unemployment benefits ----
@@ -594,29 +589,26 @@ plot_transf <- to_plot |>
 p1 <- ggplot(data = plot_transf, mapping = aes(x = period, y = value, colour = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Social transfers")
 
 p2 <- ggplot(data = plot_unemp, mapping = aes(x = period, y = value, colour = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
-  dbnomics() +
+  my_theme() +
   ggtitle("Unemployment benefits")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "09_transfers-benefits.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "09_transfers-benefits.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Building the final database ----
-
 ### Comparing the obtained series with PPP ----
-
-# Check tha the final database resembles the seasonally adjusted one
+# Check that the final database resembles the seasonally adjusted one
 # of Paredes et al. (2014).
 pppSA <- readxl::read_excel(path = "data/PPP_seasonal.xls", sheet = 1, skip = 1)
 
 pppSA <- pppSA |> 
-  mutate(across(.cols = SCR:SCE, .fns = ~ gsub(pattern = "-", replacement = "", x = .x))) |> 
   mutate(
     period = as.Date(as.yearqtr(`MILL. EURO, RAW DATA, SEASONALLY ADJUSTED, SMOOTHED ESTIMATES`, format = "%YQ%q")),
     totexp   = TOE,             # Total expenditures
@@ -666,15 +658,14 @@ plot_compare$var <- plyr::mapvalues(x = plot_compare$var, from = levels(plot_com
 ggplot(data = plot_compare, mapping = aes(x = period, y = value, color = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~ var, ncol = 3, scales = "free_y") +
-  dbnomics() +
+  my_theme() +
   ggtitle("Fiscal database for the Euro Area")
 
-ggsave(filename = "10_final.png", path = "figures/07_EA_Fipu_data/", height = 12, width = 12)
+ggsave(filename = "10_final.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Final fiscal database for the Euro area ----
 # Find the raw series here: http://shiny.cepremap.fr/data/EA_Fipu_rawdata.csv
-
 EA_Fipu_rawdata <- deseasoned |> 
   select(-Origin) |> 
   pivot_wider(names_from = var, values_from = value)
