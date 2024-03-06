@@ -1,67 +1,65 @@
 # 01 - Macroeconomic data for FR, DE, IT, ES & EA ----
 # URL: https://macro.cepremap.fr/article/2021-02/five-countries-data/
-# Macroeconomic data for general equilibrium models.
 library(tidyverse)
 library(zoo)
 library(rdbnomics)
 library(seasonal)
 library(kableExtra)
-source(file = "R/utils.R")
-fig_path <- "figures/01_five-countries-data"
-
+library(RColorBrewer)
+source("R/utils.R")
+fig_path  <- "figures/01_five-countries-data"
+last_date <- as.Date("2019-12-31")
+palette(brewer.pal(n = 9, name = "Set1"))
 ## Gather databases -----
-#   1. Smets & Wouters (2003) data base
-#   2. Financial database for the Euro Area
-#   3. Fiscal data base for the Euro Area
-#   4. International database for the Euro Area
-sw03 <- read_csv(file = "data/EA_SW_rawdata.csv") |>
+# 1. Smets & Wouters (2003) data base
+sw03 <- read_csv("data/EA_SW_rawdata.csv") |>
   filter(period >= "1980-01-01")
 
-fipu <- read_csv(file = "data/EA_Fipu_rawdata.csv")
-fina <- read_csv(file = "data/EA_Finance_rawdata.csv")
-open <- read_csv(file = "data/EA_Open_rawdata.csv")
+# 2. Financial database for the Euro Area
+fipu <- read_csv("data/EA_Fipu_rawdata.csv")
+
+# 3. Fiscal data base for the Euro Area
+fina <- read_csv("data/EA_Finance_rawdata.csv")
+
+# 4. International database for the Euro Area
+open <- read_csv("data/EA_Open_rawdata.csv")
 
 EA_rawdata <- sw03 |>
-  inner_join(y = fipu, by = join_by(period)) |>
-  inner_join(y = fina, by = join_by(period)) |>
-  inner_join(y = open, by = join_by(period)) |>
+  inner_join(fipu, join_by(period)) |>
+  inner_join(fina, join_by(period)) |>
+  inner_join(open, join_by(period)) |>
   rename(unempbenef = unemp) |>
   mutate(pop = 1000 * pop) |>
   add_column(country = "EA")
 
 ## FR, DE, IT & ES ----
-# Sources: Eurostat, IMF (WEO & IFS), BIS, OECD & ECB.
-
 ### Data retrieval & seasonal adjustment ----
-# Country data on:
-#   - Gross domestic product (GDP)
-#   - Consumption (C)
-#   - Investment (I)
-#   - GDP deflator
-#   - Compensation of employees (w)
-#   - Hours worked (h)
-#   - Investment deflator
-#   - Loans to non-financial corporations (NFC)
-#   - Entrepreneurial net worth
-#   - Short-term interest rate
-#   - Lending rate
-#   - Total government expenditure
-#   - Government consumption
-#   - Government transfers
-#   - Government interest payments
-#   - Government debt
-#   - World demand
-#   - Total government revenue
-#   - Unemployment benefits
-#   - Nominal effective exchange rate
-#   - Imports
-#   - Exports
-#   - Population
-
+#    1 Gross domestic product (GDP)
+#    2 Consumption (C)
+#    3 Investment (I)
+#    4 GDP deflator
+#    5 Compensation of employees (w)
+#    6 Hours worked (h)
+#    7 Investment deflator
+#    8 Loans to non-financial corporations (NFC)
+#    9 Entrepreneurial net worth
+#   10 Short-term interest rate
+#   11 Lending rate
+#   12 Total government expenditure
+#   13 Government consumption
+#   14 Government transfers
+#   15 Government interest payments
+#   16 Government debt
+#   17 World demand
+#   18 Total government revenue
+#   19 Unemployment benefits
+#   20 Nominal effective exchange rate (NEER)
+#   21 Imports
+#   22 Exports
+#   23 Population
 # Oil prices are assumed to be the same in all countries.
 
 #### Compensation of employees ----
-# Eurostat: namq_10_a10
 wage_de_fr <- rdb("Eurostat", "namq_10_a10", mask = "Q.CP_MEUR.SA.TOTAL.D1.DE+FR") |>
   add_column(var = "wage")
 
@@ -69,37 +67,30 @@ wage_es_it <- rdb("Eurostat", "namq_10_a10", mask = "Q.CP_MEUR.SCA.TOTAL.D1.ES+I
   add_column(var = "wage")
 
 #### Hours worked ----
-# Eurostat: namq_10_a10_e
 hours <- rdb("Eurostat", "namq_10_a10_e", mask = "Q.THS_HW.TOTAL.SCA.EMP_DC.IT+DE+FR+ES") |>
   add_column(var = "hours")
 
 #### Gross domestic product -----
-# Eurostat: namq_10_gdp
 gdp <- rdb("Eurostat", "namq_10_gdp", mask = "Q.CLV10_MEUR.SCA.B1GQ.IT+DE+FR+ES") |>
   add_column(var = "gdp")
 
 #### Consumption -----
-# Eurostat: namq_10_gdp
 conso <- rdb("Eurostat", "namq_10_gdp", mask = "Q.CLV10_MEUR.SCA.P31_S14_S15.IT+DE+FR+ES") |>
   add_column(var = "conso")
 
 #### Investment -----
-# Eurostat: namq_10_gdp
 inves <- rdb("Eurostat", "namq_10_gdp", mask = "Q.CLV10_MEUR.SCA.P51G.IT+DE+FR+ES") |>
   add_column(var = "inves")
 
 #### GDP deflator -----
-# Eurostat: namq_10_gdp
 defgdp <- rdb("Eurostat", "namq_10_gdp", mask = "Q.PD10_EUR.SCA.B1GQ.IT+DE+FR+ES") |>
   add_column(var = "defgdp")
 
 #### Investment deflator -----
-# Eurostat: namq_10_gdp
 definves <- rdb("Eurostat", "namq_10_gdp", mask = "Q.PD10_EUR.SCA.P51G.IT+DE+FR+ES") |>
   add_column(var = "definves")
 
 #### Population -----
-# Eurostat: lfsq_pganws, demo_pjanbroad, chained and interpolated
 pop_recent <- rdb("Eurostat", "lfsq_pganws", mask = "Q.THS_PER.T.TOTAL.Y15-64.POP.IT+DE+FR+ES") |>
   add_column(var = "pop_recent")
 
@@ -107,8 +98,6 @@ pop_old <- rdb("Eurostat", "demo_pjanbroad", mask = "A.NR.Y15-64.T.IT+DE+FR+ES")
   add_column(var = "pop_old")
 
 #### Government consumption ----
-# IT & DE: chain & interpolate quarterly series
-# Eurostat: gov_10q_ggnfa, gov_10a_main"
 pubcons_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.P3.FR") |>
   add_column(var = "pubcons_recent")
 
@@ -118,7 +107,7 @@ pubcons_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EU
 pubcons_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.P3.IT+DE") |>
   add_column(var = "pubcons_old")
 
-# Seasonally adjust gov_10q_ggnfa
+# Seasoanal adjustment
 df_nsa_q <- pubcons_recent_it_de_es_nsa |>
   select(period, country = geo, value)
 
@@ -135,31 +124,29 @@ deseasoned_q <- bind_rows(
   mutate(Origin = "Adjusted Series", country = var) |>
   select(-var)
 
-df_nsa_q <- df_nsa_q |>
-  mutate(Origin = "Unadjusted Series")
+df_nsa_q <- df_nsa_q |> mutate(Origin = "Unadjusted Series")
 
 plot_df <- bind_rows(df_nsa_q, deseasoned_q) |>
   na.omit()
 
-# Plot government consumption for DE, ES, IT
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ country, scales = "free_y", ncol = 2) +
+# Plot government consumption
+ggplot(plot_df, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~country, ncol = 2, scales = "free_y") +
   my_theme() +
   ggtitle("Government Consumption")
 
-ggsave(filename = "01_gov_cons_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
+
+ggsave("01_gov_cons_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Save the recent data on government consumption for DE, ES, IT
+# Save the recent data on government consumption
 pubcons_recent_it_de_es <- deseasoned_q |>
   filter(Origin == "Adjusted Series") |>
   select(country, -Origin, value, period) |>
   mutate(var = "pubcons_recent")
 
 #### Government investment ----
-# IT & DE: Eurostat: gov_10q_ggnfa, gov_10a_main.
-# Will be chained & interpolated in the next section.
 pubinves_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.P51G.FR") |>
   add_column(var = "pubinves_recent")
 
@@ -169,7 +156,7 @@ pubinves_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_E
 pubinves_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.P51G.IT+DE") |>
   add_column(var = "pubinves_old")
 
-# Seasonally-adjust gov_10q_ggnfa for IT & DE
+# Seasoanal adjustment
 df_nsa_q <- pubinves_recent_it_de_es_nsa |>
   select(period, country = geo, value)
 
@@ -192,24 +179,23 @@ df_nsa_q <- df_nsa_q |>
 plot_df <- bind_rows(df_nsa_q, deseasoned_q) |>
   na.omit()
 
-# Plot government investment for DE, ES, IT
-ggplot(data = plot_df, mapping = aes(x = period, y = value, colour = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ country, scales = "free_y", ncol = 2) +
+# Plot government investment
+ggplot(plot_df, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~country, ncol = 2, scales = "free_y") +
   my_theme() +
   ggtitle("Government Investment")
 
-ggsave(filename = "02_gov_inves_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
+ggsave("02_gov_inves_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Save the recent data on government investment for DE, ES & IT
+# Save the recent data on government investment
 pubinves_recent_it_de_es <- deseasoned_q |>
   filter(Origin == "Adjusted Series") |>
   select(country, -Origin, value, period) |>
   mutate(var = "pubinves_recent")
 
 #### Government interest payments ----
-# IT & DE: chain and interpolate Eurostat: gov_10q_ggnfa, gov_10a_main
 tfs_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.D62PAY.FR") |>
   add_column(var = "tfs_recent")
 
@@ -219,7 +205,7 @@ tfs_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NS
 tfs_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.D62PAY.IT+DE") |>
   add_column(var = "tfs_old")
 
-# Seasonally-adjust the series for Italy and Germany
+# Seasoanal adjustment
 df_nsa_q <- tfs_recent_it_de_es_nsa |>
   select(period, country = geo, value)
 
@@ -242,23 +228,23 @@ df_nsa_q <- df_nsa_q |>
 plot_df <- bind_rows(df_nsa_q, deseasoned_q) |>
   na.omit()
 
-ggplot(data = plot_df, mapping = aes(x = period, y = value, colour = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~country, scales = "free_y", ncol = 2) +
+# Plot government social transfers
+ggplot(plot_df, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~country, ncol = 2, scales = "free_y") +
   my_theme() +
   ggtitle("Government Social Transfers")
 
-ggsave(filename = "03_gov_transf_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
+ggsave("03_gov_transf_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Save the recent data on government social transfers for DE, ES & IT
+# Save the recent data on government social transfers
 tfs_recent_it_de_es <- deseasoned_q |>
   filter(Origin == "Adjusted Series") |>
   select(country, -Origin, value, period) |>
   mutate(var = "tfs_recent")
 
 #### Government interest payments ----
-# IT & DE chain & interpolate Eurostat gov_10q_ggnfa, gov_10a_main
 intpay_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.D41PAY.FR") |>
   add_column(var = "intpay_recent")
 
@@ -268,7 +254,7 @@ intpay_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR
 intpay_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.D41PAY.DE+IT") |>
   add_column(var = "intpay_old")
 
-# Seasonally adjust the data for Italy and Germany
+# Seasoanal adjustment
 df_nsa_q <- intpay_recent_it_de_es_nsa |>
   select(period, country = geo, value)
 
@@ -291,17 +277,17 @@ df_nsa_q <- df_nsa_q |>
 plot_df <- bind_rows(df_nsa_q, deseasoned_q) |>
   na.omit()
 
-# Plot government interest payments for DE, ES, & IT
-ggplot(data = plot_df, mapping = aes(x = period, y = value, colour = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~country, scales = "free_y", ncol = 2) +
+# Plot government interest payments
+ggplot(plot_df, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~country, ncol = 2, scales = "free_y") +
   my_theme() +
   ggtitle("Government Interest Payments")
 
-ggsave(filename = "04_gov_intpay_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
+ggsave("04_gov_intpay_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Save the recent data on government interest payments for DE, ES & IT
+# Save the recent data on government interest payments
 intpay_recent_it_de_es <- deseasoned_q |>
   filter(Origin == "Adjusted Series") |>
   select(country, -Origin, value, period) |>
@@ -309,7 +295,6 @@ intpay_recent_it_de_es <- deseasoned_q |>
 
 
 #### Total government expenditure ----
-# IT & DE & interpolate Eurostat gov_10q_ggnfa, gov_10a_main
 totexp_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.TE.FR") |>
   add_column(var = "totexp_recent")
 
@@ -319,7 +304,7 @@ totexp_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR
 totexp_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.TE.DE+IT") |>
   add_column(var = "totexp_old")
 
-# Seasonally adjust the data for DE, ES & IT from gov_10q_ggnfa
+# Seasoanal adjustment
 df_nsa_q <- totexp_recent_it_de_es_nsa |>
   select(period, country = geo, value)
 
@@ -342,24 +327,23 @@ df_nsa_q <- df_nsa_q |>
 plot_df <- bind_rows(df_nsa_q, deseasoned_q) |>
   na.omit()
 
-# Plot total govenrment expenditure for DE, ES & IT
-ggplot(data = plot_df, mapping = aes(x = period, y = value, colour = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ country, scales = "free_y", ncol = 2) +
+# Plot total govenrment expenditure
+ggplot(plot_df, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~country, ncol = 2, scales = "free_y") +
   my_theme() +
   ggtitle("Total Government Expenditure")
 
-ggsave(filename = "05_gov_exp_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
+ggsave("05_gov_exp_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Save the recent data on total government expenditure in DE, ES & IT
+# Save the recent data on total government expenditure
 totexp_recent_it_de_es <- deseasoned_q |>
   filter(Origin == "Adjusted Series") |>
   select(country, -Origin, value, period) |>
   mutate(var = "totexp_recent")
 
 #### Total government revenue -----
-# For IT & DE chain and interpolate Eurostat gov_10q_ggnfa & gov_10a_main
 totrev_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.TR.FR") |>
   add_column(var = "totrev_recent")
 
@@ -369,7 +353,7 @@ totrev_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR
 totrev_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.TR.DE+IT") |>
   add_column(var = "totrev_old")
 
-# Seasonally adjust gov_10q_ggnfa for DE, ES, & IT
+# Seasoanal adjustment
 df_nsa_q <- totrev_recent_it_de_es_nsa |>
   select(period, country = geo, value)
 
@@ -392,24 +376,23 @@ df_nsa_q <- df_nsa_q |>
 plot_df <- bind_rows(df_nsa_q, deseasoned_q) |>
   na.omit()
 
-# Plot total government revenue for DE, ES & IT
-ggplot(data = plot_df, mapping = aes(x = period, y = value, colour = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~country, scales = "free_y", ncol = 2) +
+# Plot total government revenue
+ggplot(plot_df, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~country, ncol = 2, scales = "free_y") +
   my_theme() +
   ggtitle("Total Government Revenue")
 
-ggsave(filename = "06_gov_rev_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
+ggsave("06_gov_rev_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Save the recent data on total government revenue for DE, ES & IT
+# Save the recent data on total government revenue
 totrev_recent_it_de_es <- deseasoned_q |>
   filter(Origin == "Adjusted Series") |>
   select(country, -Origin, value, period) |>
   mutate(var = "totrev_recent")
 
 #### Government debt -----
-# Use Eurostat gov_10q_ggdebt & IMF WEO
 debt_recent <- rdb("Eurostat", "gov_10q_ggdebt", mask = "Q.GD.S13.MIO_EUR.IT+DE+FR+ES") |>
   add_column(var = "debt_recent")
 
@@ -419,7 +402,7 @@ debt_old <- rdb("IMF", "WEO:latest", mask = "DEU+ESP+FRA+ITA.GGXWDG") |>
   mutate(geo = str_sub(string = geo, start = 1, end = 2)) |>
   filter(year(period) <= max(debt_recent$period))
 
-# Seasonally-adjust the data
+# Seasoanal adjustment
 df_nsa_q <- debt_recent |>
   select(period, country = geo, value)
 
@@ -442,31 +425,29 @@ df_nsa_q <- df_nsa_q |>
 plot_df <- bind_rows(df_nsa_q, deseasoned_q) |>
   na.omit()
 
-# Plot government debt for DE, ES, FR & IT
-ggplot(data = plot_df, mapping = aes(x = period, y = value, colour = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~country, scales = "free_y", ncol = 2) +
+# Plot government debt
+ggplot(plot_df, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~country, ncol = 2, scales = "free_y") +
   my_theme() +
-  ggtitle("Debt")
+  ggtitle("Government debt")
 
-ggsave(filename = "07_gov_debt_DE-ES-FR-IT.png", path = fig_path, height = 12, width = 12)
+ggsave("07_gov_debt_DE-ES-FR-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Save the recent data on government debt in DE, ES, FR & IT
+# Save the recent data on government debt
 debt_recent <- deseasoned_q |> 
   filter(Origin == "Adjusted Series") |> 
   select(country, -Origin, value, period) |> 
   mutate(var = "debt_recent")
 
 #### Loans to non-financial corporations -----
-# CNFS database from the Bank for International Settlements (BIS)
 loans_nfc <- rdb("BIS", "total_credit", mask = "Q.IT+DE+FR+ES.N.A.M.XDC.A") |>
   add_column(var = "loans_nfc") |>
   as_tibble() |>
   select(geo = BORROWERS_CTY, period, value, var)
 
 #### Entrepreneurial net worth ----
-# Main Economic Indicators (MEI) of the OECD
 networth <- rdb("OECD", "MEI", mask = "FRA+DEU+ITA+ESP.SPASTT01.IXOB.Q") |>
   as_tibble() |>
   select(period, value, geo = LOCATION) |>
@@ -481,7 +462,6 @@ networth <- rdb("OECD", "MEI", mask = "FRA+DEU+ITA+ESP.SPASTT01.IXOB.Q") |>
   )
 
 #### Short-term interest rate ----
-# OECD Main Economic Indicators (MEI)
 shortrate <- rdb("OECD", "MEI", mask = "FRA+DEU+ITA+ESP.IR3TIB01.ST.Q") |>
   as_tibble() |>
   select(period, value, geo = LOCATION) |>
@@ -496,7 +476,6 @@ shortrate <- rdb("OECD", "MEI", mask = "FRA+DEU+ITA+ESP.IR3TIB01.ST.Q") |>
   )
 
 #### Lending rate ----
-# Use the ECB MIR and IMF IFS to chain and interpolate by country.
 lendingrate_recent <- rdb("ECB", "MIR", mask = "M.IT+DE+FR+ES.B.A2A.A.R.A.2240.EUR.N") |>
   as_tibble() |>
   select(geo = REF_AREA, period, value) |>
@@ -511,16 +490,11 @@ lendingrate_old <- rdb("IMF", "IFS", mask = "Q.IT+DE+FR+ES.FILR_PA") |>
   select(geo = REF_AREA, period, value, var)
 
 ### World demand ----
-# Use the foreign demand specific to the four countries
-world_demand <- read_csv(file = "data/Foreign_demand.csv") |>
+world_demand <- read_csv("data/Foreign_demand.csv") |>
   rename(geo = country)
 
 #### Unemployment benefits ----
-#   1. Determine the quarterly series using the ratio of quarterly social expenditure and annual unemployment benefits
-#   2. Remove the seasonal component from the series.
-#   3. Retrieve annual unemployment benefits from Eurostat spr_exp_sum.
-
-# 1. Retrieve government social expenditures and calculate quarterly shares for each year
+# 1. Calculate the quarterly share from quarterly government social expenditures
 url_filter <- "Q.MIO_EUR.NSA.S13.D62PAY.IT+DE+FR+ES"
 df <- rdb("Eurostat", "gov_10q_ggnfa", mask = url_filter)
 
@@ -532,28 +506,7 @@ socialexp <- df |>
   ungroup() |>
   select(-c("value", "year", "sum"))
 
-# 2. Retrieve the latest annual unemployment benefits,
-# put them in a quarterly table and use the previously
-# obtained ratio of quarterly social expenditures to compute
-# quarterly unemployment benefits.
-url_filter <- "Q.MIO_EUR.NSA.S13.D62PAY.IT+DE+FR+ES"
-df <- rdb("Eurostat", "gov_10q_ggnfa", mask = url_filter)
-
-socialexp <- df |>
-  mutate(year = year(period), country = geo) |>
-  select(period, value, year, country) |>
-  group_by(year, country) |>
-  mutate(
-    sum = sum(value),
-    ratio = value / sum
-  ) |>
-  ungroup() |>
-  select(-value, -year, -sum)
-
-# 3. Retrieve the latest annual data on unemployment benefits,
-# put them in a quarterly table and use the previously calculated
-# ratio of quarterly social expenditures to compute quarterly 
-# unemployment benefits.
+# 2. Use the ratio to compute quarterly unemployment benefits from annual unemployment benefits
 url_filter <- "A.MIO_EUR.S13.GF1005.TE.IT+DE+FR+ES"
 df <- rdb("Eurostat", "gov_10a_exp", mask = url_filter)
 
@@ -580,7 +533,7 @@ unempbenef_q <- recent_unempbenef_q |>
   select(-ratio) |>
   na.omit()
 
-# Seasonally adjust the data
+# 3. Seasonally adjust the quarterly data
 to_deseason <- unempbenef_q |>
   spread(country, value)
 
@@ -601,13 +554,13 @@ plot_unempbenef <- bind_rows(unempbenef_q, unempbenef_q_deseasoned) |>
   na.omit()
 
 # Plot unemployment benefits for DE, ES, FR & IT
-ggplot(data = plot_unempbenef, mapping = aes(x = period, y = value, colour = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ country, scales = "free_y", ncol = 2) +
+ggplot(plot_unempbenef, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~country, ncol = 2, scales = "free_y") +
   my_theme() +
   ggtitle("Unemployment benefits")
 
-ggsave(filename = "08_unempbenef_DE-ES-FR-IT.png", path = fig_path, height = 12, width = 12)
+ggsave("08_unempbenef_DE-ES-FR-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # Save the recent data on unemployment benefits in DE, ES, FR & IT
@@ -616,8 +569,7 @@ unempbenef_recent <- unempbenef_q_deseasoned |>
   select(geo = country, -Origin, value, period) |>
   mutate(var = "unempbenef_recent")
 
-# 4. Retrieve the annual series from Eurostat spr_exp_sum
-# that will later be interpolated and chained to the quarterly series.
+# 4. Get annual Eurostat spr_exp_sum data that will be interpolated and chained later.
 url_filter <- "A.UNEMPLOY.MIO_EUR.IT+DE+FR+ES"
 df <- rdb("Eurostat", "spr_exp_sum", mask = url_filter)
 
@@ -625,8 +577,7 @@ unempbenef_old <- df |>
   add_column(var = "unempbenef_old") |>
   select(period, value, geo, var)
 
-#### Nominal effective exchange rate ----
-# eer from BIS
+#### (Nominal) effective exchange rate ----
 df <- rdb("BIS", "eer", mask = "M.N.B.IT+DE+FR+ES")
 
 neer <- df |>
@@ -637,7 +588,6 @@ neer <- df |>
   mutate(period = yq(period), var = "neer")
 
 #### Imports and exports ----
-# OECD Economic Outlook (OE) database
 df <- rdb("OECD", "EO", mask = "FRA+DEU+ITA+ESP.MGSV+XGSV.Q")
 
 imports_exports_volume <- df |>
@@ -658,8 +608,6 @@ imports_exports_volume <- df |>
   )
 
 #### Merging data frames -----
-# We merge all data frames with all the series.
-# Later we will chain and interpolate the special cases.
 df <- bind_rows(
   wage_de_fr,
   wage_es_it,
@@ -700,26 +648,22 @@ df <- bind_rows(
   filter(year(period) >= 1991) |>
   arrange(var, period)
 
-# Plot the unchained series for DE, ES, FR, IT
-ggplot(data = df, mapping = aes(x = period, y = value, colour = country)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ var, ncol = 3, scales = "free_y") +
+# Plot the unchained series
+ggplot(df, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~var, ncol = 3, scales = "free_y") +
   my_theme() +
   ggtitle("Unchained Series")
 
-ggsave(filename = "09_unchained_DE-ES-FR-IT.png", path = fig_path, height = 12, width = 12)
+ggsave("09_unchained_DE-ES-FR-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### France: Chaining & Interpolating Data -----
-# Before chaining and interpolating the special cases, we first
-# gather the data for France and proceed case by case.
 df_fr <- df |> 
   filter(country == "FR") |> 
   select(-country)
 
 #### France: Government debt ----
-# We first interpolate the annual series to obtain quarterly series,
-# then we chain the quarterly series from the two different data bases.
 debt_old_a <- df_fr |> 
   filter(var == "debt_old") |> 
   mutate(value = 1000 * value) |> 
@@ -731,7 +675,7 @@ debt_old_q <- tibble(
     length.out = (nrow(debt_old_a) - 1) * 4 + 1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = debt_old_a, by = join_by(period)) |> 
+  left_join(debt_old_a, join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y) |> 
   mutate(value = na.spline(value), var = "debt")
@@ -750,23 +694,21 @@ debt <- chain(
   mutate(var = "debt")
 
 plot_df <- bind_rows(
-  add_column(.data = debt_old_a, var = "debt_old_a"),
-  mutate(.data = debt_old_q, var = "debt_old_q"),
-  mutate(.data = debt, var = "debt_chained")
+  add_column(debt_old_a, var = "debt_old_a"),
+  mutate(debt_old_q, var = "debt_old_q"),
+  mutate(debt, var = "debt_chained")
   )
 
 # Plot government debt for France
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("France: Government Debt")
 
-ggsave(filename = "10_gov_debt_FR.png", path = fig_path, height = 12, width = 12)
+ggsave("10_gov_debt_FR.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Population -----
-# First interpolate the annual series to obtain quarterly values,
-# then chain the quarterly series from the two different databases.
 pop_old_a <- df_fr |> 
   filter(var == "pop_old")
 
@@ -776,7 +718,7 @@ pop_old_q <- tibble(
     length.out = (nrow(pop_old_a) - 1) * 4 + 1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = pop_old_a, by = join_by(period)) |> 
+  left_join(pop_old_a, join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y) |> 
   mutate(value = na.spline(value), var = "pop")
@@ -792,22 +734,21 @@ pop <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = pop_old_a, var = "pop_old_a"),
-  mutate(.data = pop_old_q, var = "pop_old_q"),
-  mutate(.data = pop, var = "pop_chained")
+  mutate(pop_old_a, var = "pop_old_a"),
+  mutate(pop_old_q, var = "pop_old_q"),
+  mutate(pop, var = "pop_chained")
   )
 
 # Plot the population for France
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("France: Population")
 
-ggsave(filename = "11_pop_FR.png", path = fig_path, height = 12, width = 12)
+ggsave("11_pop_FR.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### France: Lending rate -----
-# Chain the quarterly series from the two different databases.
 lendingrate_old <- df_fr |> 
   filter(var == "lendingrate_old") |> 
   mutate(var = "lendingrate")
@@ -826,23 +767,21 @@ lendingrate <- chain(
   mutate(var = "lendingrate")
 
 plot_df <- bind_rows(
-  mutate(.data = lendingrate_old, var = "lendingrate_old"),
-  mutate(.data = lendingrate_recent, var = "lendingrate_recent"),
-  mutate(.data = lendingrate, var = "lendingrate_chained")
+  mutate(lendingrate_old, var = "lendingrate_old"),
+  mutate(lendingrate_recent, var = "lendingrate_recent"),
+  mutate(lendingrate, var = "lendingrate_chained")
   )
 
 # Plot the lending rate for France
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("France: Lending Rate")
 
-ggsave(filename = "12_lendingrate_FR.png", path = fig_path, height = 12, width = 12)
+ggsave("12_lendingrate_FR.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### France: Unemployment benefits -----
-# Interpolate the annual series to obtain quarterly values,
-# then we chain the two quarterly series.
 unempbenef_old_a <- df_fr |> 
   filter(var == "unempbenef_old") |> 
   mutate(value = value / 4)
@@ -853,7 +792,7 @@ unempbenef_old_q <- tibble(
     length.out = (nrow(unempbenef_old_a) - 1) * 4 + 1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = unempbenef_old_a, by = join_by(period)) |> 
+  left_join(unempbenef_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "unempbenef")
 
@@ -868,22 +807,21 @@ unempbenef <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = unempbenef_old_a, var = "unempbenef_old_a"),
-  mutate(.data = unempbenef_old_q, var = "unempbenef_old_q"),
-  mutate(.data = unempbenef, var = "unempbenef_chained")
+  mutate(unempbenef_old_a, var = "unempbenef_old_a"),
+  mutate(unempbenef_old_q, var = "unempbenef_old_q"),
+  mutate(unempbenef, var = "unempbenef_chained")
   )
 
 # Plot the unemployment benefits for France
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("France: Unemployment Benefits")
 
-ggsave(filename = "13_unempbenef_FR.png", path = fig_path, height = 12, width = 12)
+ggsave("13_unempbenef_FR.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### France: Merging French Data -----
-# We gather the final series for France in a data frame
 FR_rawdata <- df_fr |> 
   filter(! var %in% c(
     "lendingrate_old", "lendingrate_recent",
@@ -907,16 +845,12 @@ FR_rawdata <- df_fr |>
   spread(var, value) |> 
   add_column(country = "FR")
 
-### Spain: Chaining & Interpolating Data ----
-# Before chaining and interpolating the special cases,
-# we gather all the data for Spain and proceed by case.
+### Spain: Chaining & Interpolating Data ----.
 df_es <- df |> 
   filter(country == "ES") |> 
   select(-country)
 
 #### Spain: Government debt ----
-# First interpolate the annual series to obtain quarterly values,
-# then chain the quarterly series from the two data bases.
 debt_old_a <- df_es |> 
   filter(var == "debt_old") |> 
   mutate(value = 1000 * value) |> 
@@ -928,7 +862,7 @@ debt_old_q <- tibble(
     length.out = (nrow(debt_old_a) - 1) * 4 + 1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = debt_old_a, by = join_by(period)) |> 
+  left_join(debt_old_a, join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y) |> 
   mutate(value = na.spline(value), var = "debt")
@@ -947,23 +881,21 @@ debt <- chain(
   mutate(var = "debt")
 
 plot_df <- bind_rows(
-  add_column(.data = debt_old_a, var = "debt_old_a"),
-  mutate(.data = debt_old_q, var = "debt_old_q"),
-  mutate(.data = debt, var = "debt_chained")
+  add_column(debt_old_a, var = "debt_old_a"),
+  mutate(debt_old_q, var = "debt_old_q"),
+  mutate(debt, var = "debt_chained")
   )
 
 # Plot the government debt of Spain
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Spain: Government Debt")
 
-ggsave(filename = "14_gov_debt_ES.png", path = fig_path, height = 12, width = 12)
+ggsave("14_gov_debt_ES.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Spain: Population -----
-# First interpolate the annual series, then chain the quarterly
-# values from the two different databases.
 pop_old_a <- df_es |> 
   filter(var == "pop_old")
 
@@ -973,7 +905,7 @@ pop_old_q <- tibble(
       length.out = (nrow(pop_old_a) - 1) * 4 + 1,
       by = "quarter"),
     value = NA) |> 
-  left_join(y = pop_old_a, by = join_by(period)) |> 
+  left_join(pop_old_a, join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y) |> 
   mutate(value = na.spline(value), var = "pop")
@@ -989,22 +921,21 @@ pop <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = pop_old_a, var = "pop_old_a"),
-  mutate(.data = pop_old_q, var = "pop_old_q"),
-  mutate(.data = pop, var = "pop_chained")
+  mutate(pop_old_a, var = "pop_old_a"),
+  mutate(pop_old_q, var = "pop_old_q"),
+  mutate(pop, var = "pop_chained")
   )
 
 # Plot the population for Spain
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Spain: Population")
 
-ggsave(filename = "15_pop_ES.png", path = fig_path, height = 12, width = 12)
+ggsave("15_pop_ES.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Spain: Lending rate -----
-# Chain the quarterly values from the two different databases.
 lendingrate_old <- df_es |> 
   filter(var == "lendingrate_old") |> 
   mutate(var = "lendingrate")
@@ -1023,23 +954,21 @@ lendingrate <- chain(
   mutate(var = "lendingrate")
 
 plot_df <- bind_rows(
-  mutate(.data = lendingrate_old, var = "lendingrate_old"),
-  mutate(.data = lendingrate_recent, var = "lendingrate_recent"),
-  mutate(.data = lendingrate, var = "lendingrate_chained")
+  mutate(lendingrate_old, var = "lendingrate_old"),
+  mutate(lendingrate_recent, var = "lendingrate_recent"),
+  mutate(lendingrate, var = "lendingrate_chained")
   )
 
 # Plot the lending rate for Spain
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Spain: Lending Rate")
 
-ggsave(filename = "16_lendingrate_ES.png", path = fig_path, height = 12, width = 12)
+ggsave("16_lendingrate_ES.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Spain: Unemployment benefits -----
-# We first interpolate the annual series to obtain quarterly series,
-# then we chain the two quarterly series.
 unempbenef_old_a <- df_es |> 
   filter(var == "unempbenef_old") |> 
   mutate(value = value / 4)
@@ -1050,7 +979,7 @@ unempbenef_old_q <- tibble(
     length.out = (nrow(unempbenef_old_a) - 1) * 4 + 1,
     by = "quarter"),
   value = NA) |> 
-  left_join(unempbenef_old_a, by = join_by(period)) |> 
+  left_join(unempbenef_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "unempbenef")
 
@@ -1065,22 +994,21 @@ unempbenef <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = unempbenef_old_a, var = "unempbenef_old_a"),
-  mutate(.data = unempbenef_old_q, var = "unempbenef_old_q"),
-  mutate(.data = unempbenef, var = "unempbenef_chained")
+  mutate(unempbenef_old_a, var = "unempbenef_old_a"),
+  mutate(unempbenef_old_q, var = "unempbenef_old_q"),
+  mutate(unempbenef, var = "unempbenef_chained")
   )
 
 # Plot the unemployment benefits for Spain
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Unemployment Benefits")
 
-ggsave(filename = "17_unempbenef_ES.png", path = fig_path, height = 12, width = 12)
+ggsave("17_unempbenef_ES.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Spain: Merging Spanish Data ----
-# Gather all the final series for Spain in a data frame
 ES_rawdata <- df_es |> 
   filter(! var %in% c(
     "lendingrate_old", "lendingrate_recent",
@@ -1105,15 +1033,11 @@ ES_rawdata <- df_es |>
   add_column(country = "ES")
 
 ### Germany: Chaining & Interpolating Data ----
-# Before chaining and interpolating the special cases, we
-# first gather all the data for Germany and then proceed by case.
 df_de <- df |> 
   filter(country == "DE") |> 
   select(-country)
 
 #### Germany: Government debt -----
-# We first interpolate the annual series to obtain quarterly series,
-# and then chain the quarterly series from the two different databases.
 debt_old_a <- df_de |> 
   filter(var == "debt_old") |> 
   mutate(value = 1000 * value) |> 
@@ -1125,7 +1049,7 @@ debt_old_q <- tibble(
     length.out = (nrow(debt_old_a) - 1) * 4 + 1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = debt_old_a, by = join_by(period)) |> 
+  left_join(debt_old_a, join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y) |> 
   mutate(value = na.spline(value), var = "debt")
@@ -1144,23 +1068,21 @@ debt <- chain(
   mutate(var = "debt")
 
 plot_df <- bind_rows(
-  add_column(.data = debt_old_a, var = "debt_old_a"),
-  mutate(.data = debt_old_q, var = "debt_old_q"),
-  mutate(.data = debt, var = "debt_chained")
+  add_column(debt_old_a, var = "debt_old_a"),
+  mutate(debt_old_q, var = "debt_old_q"),
+  mutate(debt, var = "debt_chained")
   )
 
 # Plot the government debt for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Government Debt")
 
-ggsave(filename = "18_govdebt_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("18_govdebt_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Population -----
-# First interpolate the annual series to obtain quarterly series,
-# then chain the quarterly series from the two different databases.
 pop_old_a <- df_de |> 
   filter(var == "pop_old")
 
@@ -1170,7 +1092,7 @@ pop_old_q <- tibble(
     length.out = (nrow(pop_old_a) - 1) * 4 + 1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = pop_old_a, by = join_by(period)) |> 
+  left_join(pop_old_a, join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y) |> 
   mutate(value = na.spline(value), var = "pop")
@@ -1186,22 +1108,21 @@ pop <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = pop_old_a, var = "pop_old_a"),
-  mutate(.data = pop_old_q, var = "pop_old_q"),
-  mutate(.data = pop, var = "pop_chained")
+  mutate(pop_old_a, var = "pop_old_a"),
+  mutate(pop_old_q, var = "pop_old_q"),
+  mutate(pop, var = "pop_chained")
   )
 
 # Plot the population for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Population")
 
-ggsave(filename = "19_pop_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("19_pop_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Lending rate ----
-# Chain the quarterly series from the two different databases. 
 lendingrate_old <- df_de |> 
   filter(var == "lendingrate_old") |> 
   mutate(var = "lendingrate")
@@ -1220,23 +1141,21 @@ lendingrate <- chain(
   mutate(var = "lendingrate")
 
 plot_df <- bind_rows(
-  mutate(.data = lendingrate_old, var = "lendingrate_old"),
-  mutate(.data = lendingrate_recent, var = "lendingrate_recent"),
-  mutate(.data = lendingrate, var = "lendingrate_chained")
+  mutate(lendingrate_old, var = "lendingrate_old"),
+  mutate(lendingrate_recent, var = "lendingrate_recent"),
+  mutate(lendingrate, var = "lendingrate_chained")
   )
 
 # Plot the lending rate for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Lending Rate")
 
-ggsave(filename = "20_lendingrate_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("20_lendingrate_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Unemployment benefits ----
-# Interpolate the annual series to obtain quarterly values,
-# and then chain the two quarterly series.
 unempbenef_old_a <- df_de |> 
   filter(var == "unempbenef_old") |> 
   mutate(value = value / 4)
@@ -1247,7 +1166,7 @@ unempbenef_old_q <- tibble(
     length.out = (nrow(unempbenef_old_a) - 1) * 4 + 1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = unempbenef_old_a, by = join_by(period)) |> 
+  left_join(unempbenef_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "unempbenef")
 
@@ -1262,23 +1181,21 @@ unempbenef <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = unempbenef_old_a, var = "unempbenef_old_a"),
-  mutate(.data = unempbenef_old_q, var = "unempbenef_old_q"),
-  mutate(.data = unempbenef, var = "unempbenef_chained")
+  mutate(unempbenef_old_a, var = "unempbenef_old_a"),
+  mutate(unempbenef_old_q, var = "unempbenef_old_q"),
+  mutate(unempbenef, var = "unempbenef_chained")
   )
 
 # Plot the unemployment benefits for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Unemployment Benefits")
 
-ggsave(filename = "21_unempbenef_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("21_unempbenef_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Government consumption -----
-# Interpolate the annual series to obtain quarterly values,
-# then chain the two quarterly series from the different databases.
 pubcons_old_a <- df_de |> 
   filter(var == "pubcons_old") |> 
   mutate(value = value / 4)
@@ -1289,7 +1206,7 @@ pubcons_old_q <- tibble(
     length.out = (nrow(pubcons_old_a) - 1) * 4 + 1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = pubcons_old_a, by = join_by(period)) |> 
+  left_join(pubcons_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "pubcons")
 
@@ -1306,23 +1223,21 @@ pubcons <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = pubcons_old_a, var = "pubcons_old_a"),
-  mutate(.data = pubcons_old_q, var = "pubcons_old_q"),
-  mutate(.data = pubcons, var = "pubcons_chained")
+  mutate(pubcons_old_a, var = "pubcons_old_a"),
+  mutate(pubcons_old_q, var = "pubcons_old_q"),
+  mutate(pubcons, var = "pubcons_chained")
   )
 
 # Plot the government consumption for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Government Consumption")
 
-ggsave(filename = "22_gov_cons_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("22_gov_cons_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Government investment -----
-# Interpolate the annual series to obtain quarterly values,
-# then chain the quarterly series from the two different databases.
 pubinves_old_a <- df_de |> 
   filter(var == "pubinves_old") |> 
   mutate(value = value / 4)
@@ -1333,7 +1248,7 @@ pubinves_old_q <- tibble(
     length.out = (nrow(pubinves_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = pubinves_old_a, by = join_by(period)) |> 
+  left_join(pubinves_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "pubinves")
 
@@ -1350,23 +1265,21 @@ pubinves <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = pubinves_old_a, var = "pubinves_old_a"),
-  mutate(.data = pubinves_old_q, var = "pubinves_old_q"),
-  mutate(.data = pubinves, var = "pubinves_chained")
+  mutate(pubinves_old_a, var = "pubinves_old_a"),
+  mutate(pubinves_old_q, var = "pubinves_old_q"),
+  mutate(pubinves, var = "pubinves_chained")
   )
 
 # Plot government investment for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Government Investment")
 
-ggsave(filename = "23_gov_inves_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("23_gov_inves_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Government social transfers ----
-# We first interpolate the annual series to obtain quarterly series,
-# then we chain the two series from the two different databases.
 tfs_old_a <- df_de |> 
   filter(var == "tfs_old") |> 
   mutate(value = value / 4)
@@ -1377,7 +1290,7 @@ tfs_old_q <- tibble(
     length.out = (nrow(tfs_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = tfs_old_a, by = join_by(period)) |> 
+  left_join(tfs_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "tfs")
 
@@ -1394,23 +1307,21 @@ tfs <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = tfs_old_a, var = "tfs_old_a"),
-  mutate(.data = tfs_old_q, var = "tfs_old_q"),
-  mutate(.data = tfs, var = "tfs_chained")
+  mutate(tfs_old_a, var = "tfs_old_a"),
+  mutate(tfs_old_q, var = "tfs_old_q"),
+  mutate(tfs, var = "tfs_chained")
   )
 
 # Plot government social transfers for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Government Social Transfers")
 
-ggsave(filename = "24_gov_soctransf_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("24_gov_soctransf_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Total government expenditure ----
-# We first interpolate the annual series to obtain quarterly values,
-# then we chain the quarterly series from the two different databases.
 totexp_old_a <- df_de |> 
   filter(var == "totexp_old") |> 
   mutate(value = value / 4)
@@ -1421,7 +1332,7 @@ totexp_old_q <- tibble(
     length.out = (nrow(totexp_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = totexp_old_a, by = join_by(period)) |> 
+  left_join(totexp_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "totexp")
 
@@ -1438,23 +1349,21 @@ totexp <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = totexp_old_a, var = "totexp_old_a"),
-  mutate(.data = totexp_old_q, var = "totexp_old_q"),
-  mutate(.data = totexp, var = "totexp_chained")
+  mutate(totexp_old_a, var = "totexp_old_a"),
+  mutate(totexp_old_q, var = "totexp_old_q"),
+  mutate(totexp, var = "totexp_chained")
   )
 
 # Plot total government expenditure for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Total Government Expenditure")
 
-ggsave(filename = "25_gov_exp_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("25_gov_exp_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Total government revenue ----
-# First interpolate the annual series to obtain quarterly values,
-# then chain the two quarterly series from the two different databases.
 totrev_old_a <- df_de |> 
   filter(var == "totrev_old") |> 
   mutate(value = value / 4)
@@ -1465,7 +1374,7 @@ totrev_old_q <- tibble(
     length.out = (nrow(totrev_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = totrev_old_a, by = join_by(period)) |> 
+  left_join(totrev_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "totrev")
 
@@ -1482,23 +1391,21 @@ totrev <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = totrev_old_a, var = "totrev_old_a"),
-  mutate(.data = totrev_old_q, var = "totrev_old_q"),
-  mutate(.data = totrev, var = "totrev_chained")
+  mutate(totrev_old_a, var = "totrev_old_a"),
+  mutate(totrev_old_q, var = "totrev_old_q"),
+  mutate(totrev, var = "totrev_chained")
   )
 
 # Plot total government revenue for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Total Government Revenue")
 
-ggsave(filename = "26_gov_rev_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("26_gov_rev_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Government interest payments -----
-# First interpolate the annual series to obtain quarterly series,
-# then chain the two quarterly series from the two databases.
 intpay_old_a <- df_de |> 
   filter(var == "intpay_old") |> 
   mutate(value = value / 4)
@@ -1509,7 +1416,7 @@ intpay_old_q <- tibble(
     length.out = (nrow(intpay_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = intpay_old_a, by = join_by(period)) |> 
+  left_join(intpay_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "intpay")
 
@@ -1532,16 +1439,15 @@ plot_df <- bind_rows(
   )
 
 # Plot government interst payments for Germany
-ggplot(data = plot_df, mapping = aes(x = period, y = value, col = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Germany: Government Interest Payments")
 
-ggsave(filename = "27_gov_intpay_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("27_gov_intpay_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Germany: Merging German Data ----
-# We gather all the final series for Germany in a data frame.
 DE_rawdata <- df_de |> 
   filter(! var %in% c(
     "lendingrate_old", "lendingrate_recent",
@@ -1561,17 +1467,11 @@ DE_rawdata <- df_de |>
   add_column(country = "DE")
 
 ### Italy: Chaining & Interpolating Data ----
-# Before chaining and interpolating the special cases, we first gather
-# all data fro Italy and then proceed case by case.
 df_it <- df |> 
   filter(country == "IT") |> 
   select(-country)
 
 #### Italy: Consumption ----
-# Quarterly data on consumption is not available 
-# for Italy before 1996, but annual data is.
-# We interpolate the annual series to obtain quarterly values,
-# and then we chain the two quarterly series in 1996-01-01.
 conso_old_a <- rdb("Eurostat", "nama_10_gdp", mask = "A.CLV10_MEUR.P31_S14_S15.IT") |> 
   select(period, value) |> 
   add_column(var = "conso_old") |> 
@@ -1583,7 +1483,7 @@ conso_old_q <- tibble(
     length.out = (nrow(conso_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = conso_old_a, by = join_by(period)) |> 
+  left_join(conso_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "conso")
 
@@ -1599,25 +1499,21 @@ conso <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = conso_old_a, var = "conso_old_a"),
-  mutate(.data = conso_old_q, var = "conso_old_q"),
-  mutate(.data = conso, var = "conso_chained")
+  mutate(conso_old_a, var = "conso_old_a"),
+  mutate(conso_old_q, var = "conso_old_q"),
+  mutate(conso, var = "conso_chained")
   )
 
 # Plot consumption for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Consumption")
 
-ggsave(filename = "28_consumption_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("28_consumption_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Investment ----
-# Quarterly data on investment is unavailable befofre 1996,
-# but annual data exists.
-# We interpolate the annual series to obtain quarterly values,
-# and then chain the two quarterly series in 1996-01-01
 inves_old_a <- rdb("Eurostat", "nama_10_gdp", mask = "A.CLV10_MEUR.P51G.IT") |> 
   select(period, value) |> 
   add_column(var = "inves_old") |> 
@@ -1629,7 +1525,7 @@ inves_old_q <- tibble(
     length.out = (nrow(inves_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = inves_old_a, by = join_by(period)) |> 
+  left_join(inves_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "inves")
 
@@ -1645,24 +1541,21 @@ inves <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = inves_old_a, var = "inves_old_a"),
-  mutate(.data = inves_old_q, var = "inves_old_q"),
-  mutate(.data = inves, var = "inves_chained")
+  mutate(inves_old_a, var = "inves_old_a"),
+  mutate(inves_old_q, var = "inves_old_q"),
+  mutate(inves, var = "inves_chained")
   )
 
 # Plot investment for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Investment")
 
-ggsave(filename = "29_investment_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("29_investment_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Investment deflator ----
-# Quarterly data on investment deflator is unavailable for Italy before 1996,
-# but annual data is. We interpolate the annual series to obtain quarterly values
-# and chain the two quarterly series in 1996-01-01.
 definves_old_a <- rdb("Eurostat", "nama_10_gdp", mask = "A.PD10_EUR.P51G.IT") |> 
   select(period, value) |> 
   add_column(var = "definves_old")
@@ -1673,7 +1566,7 @@ definves_old_q <- tibble(
     length.out = (nrow(definves_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = definves_old_a, by = join_by(period)) |> 
+  left_join(definves_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "definves")
 
@@ -1689,23 +1582,21 @@ definves<- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = definves_old_a, var = "definves_old_a"),
-  mutate(.data = definves_old_q, var = "definves_old_q"),
-  mutate(.data = definves, var = "definves_chained")
+  mutate(definves_old_a, var = "definves_old_a"),
+  mutate(definves_old_q, var = "definves_old_q"),
+  mutate(definves, var = "definves_chained")
   )
 
 # Plot the investment deflator for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Investment Deflator")
 
-ggsave(filename = "30_invesdef_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("30_invesdef_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Government debt ----
-# We first interpolate the annual series to obtain quarterly values,
-# the we chain the two quarterly series from the two different databases.
 debt_old_a <- df_it |> 
   filter(var == "debt_old") |> 
   mutate(value = 1000 * value) |> 
@@ -1717,7 +1608,7 @@ debt_old_q <- tibble(
     length.out = (nrow(debt_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = debt_old_a, by = join_by(period)) |> 
+  left_join(debt_old_a, join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y) |> 
   mutate(value = na.spline(value), var = "debt")
@@ -1736,23 +1627,21 @@ debt <- chain(
   mutate(var = "debt")
 
 plot_df <- bind_rows(
-  add_column(.data = debt_old_a, var = "debt_old_a"),
-  mutate(.data = debt_old_q, var = "debt_old_q"),
-  mutate(.data = debt, var = "debt_chained")
+  add_column(debt_old_a, var = "debt_old_a"),
+  mutate(debt_old_q, var = "debt_old_q"),
+  mutate(debt, var = "debt_chained")
   )
 
 # Plot the government debt of Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Government Debt")
 
-ggsave(filename = "31_govdebt_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("31_govdebt_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Population ----
-# We first interpolate the annual series in order to obtain quarterly series, 
-# and then we chain the quarterly series from the two different databases.
 pop_old_a <- df_it |> 
   filter(var == "pop_old")
 
@@ -1762,7 +1651,7 @@ pop_old_q <- tibble(
     length.out = (nrow(pop_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = pop_old_a, by = join_by(period)) |> 
+  left_join(pop_old_a, join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y) |> 
   mutate(value = na.spline(value), var = "pop")
@@ -1778,23 +1667,22 @@ pop <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = pop_old_a, var = "pop_old_a"),
-  mutate(.data = pop_old_q, var = "pop_old_q"),
-  mutate(.data = pop, var = "pop_chained"),
-  mutate(.data = pop_recent, var = "pop_recent")
+  mutate(pop_old_a, var = "pop_old_a"),
+  mutate(pop_old_q, var = "pop_old_q"),
+  mutate(pop, var = "pop_chained"),
+  mutate(pop_recent, var = "pop_recent")
   )
 
 # Plot the population of Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Population")
 
-ggsave(filename = "32_pop_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("32_pop_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Lending rate ----
-# We chain the quarterly series from the two different databases.
 lendingrate_old <- df_it |> 
   filter(var == "lendingrate_old") |> 
   mutate(var = "lendingrate")
@@ -1812,23 +1700,21 @@ lendingrate <- chain(
   mutate(var = "lendingrate")
 
 plot_df <- bind_rows(
-  mutate(.data = lendingrate_old, var = "lendingrate_old"),
-  mutate(.data = lendingrate_recent, var = "lendingrate_recent"),
-  mutate(.data = lendingrate, var = "lendingrate_chained")
+  mutate(lendingrate_old, var = "lendingrate_old"),
+  mutate(lendingrate_recent, var = "lendingrate_recent"),
+  mutate(lendingrate, var = "lendingrate_chained")
   )
 
 # Plot the lending rate for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Lending Rate")
 
-ggsave(filename = "33_lendingrate_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("33_lendingrate_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Unemployment benefits -----
-# We first interpolate the annual series in order to obtain quarterly series, 
-# and then we chain the two quarterly series.
 unempbenef_old_a <- df_it |> 
   filter(var == "unempbenef_old") |> 
   mutate(value = value / 4)
@@ -1839,7 +1725,7 @@ unempbenef_old_q <- tibble(
     length.out = (nrow(unempbenef_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = unempbenef_old_a, by = join_by(period)) |> 
+  left_join(unempbenef_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "unempbenef")
 
@@ -1854,23 +1740,21 @@ unempbenef <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = unempbenef_old_a, var = "unempbenef_old_a"),
-  mutate(.data = unempbenef_old_q, var = "unempbenef_old_q"),
-  mutate(.data = unempbenef, var = "unempbenef_chained")
+  mutate(unempbenef_old_a, var = "unempbenef_old_a"),
+  mutate(unempbenef_old_q, var = "unempbenef_old_q"),
+  mutate(unempbenef, var = "unempbenef_chained")
   )
 
 # Plot the unemployment benefits for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Unemployment Benefits")
 
-ggsave(filename = "34_unempbenef_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("34_unempbenef_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Government consumption ----
-# We first interpolate the annual series in order to obtain quarterly series, 
-# and then we chain the quarterly series from the two different databases.
 pubcons_old_a <- df_it |> 
   filter(var == "pubcons_old") |> 
   mutate(value = value / 4)
@@ -1881,7 +1765,7 @@ pubcons_old_q <- tibble(
     length.out = (nrow(pubcons_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = pubcons_old_a, by = join_by(period)) |> 
+  left_join(pubcons_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "pubcons")
 
@@ -1898,23 +1782,21 @@ pubcons <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = pubcons_old_a, var = "pubcons_old_a"),
-  mutate(.data = pubcons_old_q, var = "pubcons_old_q"),
-  mutate(.data = pubcons, var = "pubcons_chained")
+  mutate(pubcons_old_a, var = "pubcons_old_a"),
+  mutate(pubcons_old_q, var = "pubcons_old_q"),
+  mutate(pubcons, var = "pubcons_chained")
   )
 
 # Plot the government consumption of Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Government Consumption")
 
-ggsave(filename = "35_govcons_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("35_govcons_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Government investment -----
-# Interpolate the annual series in order to obtain quarterly series, 
-# and then we chain the quarterly series from the two different databases.
 pubinves_old_a <- df_it |> 
   filter(var == "pubinves_old") |> 
   mutate(value = value / 4)
@@ -1925,7 +1807,7 @@ pubinves_old_q <- tibble(
     length.out = (nrow(pubinves_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = pubinves_old_a, by = join_by(period)) |> 
+  left_join(pubinves_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "pubinves")
 
@@ -1940,23 +1822,21 @@ pubinves <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = pubinves_old_a, var = "pubinves_old_a"),
-  mutate(.data = pubinves_old_q, var = "pubinves_old_q"),
-  mutate(.data = pubinves, var = "pubinves_chained")
+  mutate(pubinves_old_a, var = "pubinves_old_a"),
+  mutate(pubinves_old_q, var = "pubinves_old_q"),
+  mutate(pubinves, var = "pubinves_chained")
   )
 
 # Plot government investment for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Government Investment")
 
-ggsave(filename = "36_gov_inv_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("36_gov_inv_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Government social transfers -----
-# We first interpolate the annual series in order to obtain quarterly series, 
-# and then we chain the quarterly series from the two different databases.
 tfs_old_a <- df_it |> 
   filter(var == "tfs_old") |> 
   mutate(value = value / 4)
@@ -1967,7 +1847,7 @@ tfs_old_q <- tibble(
     length.out = (nrow(tfs_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = tfs_old_a, by = join_by(period)) |> 
+  left_join(tfs_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "tfs")
 
@@ -1984,23 +1864,21 @@ tfs <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = tfs_old_a, var = "tfs_old_a"),
-  mutate(.data = tfs_old_q, var = "tfs_old_q"),
-  mutate(.data = tfs, var = "tfs_chained")
+  mutate(tfs_old_a, var = "tfs_old_a"),
+  mutate(tfs_old_q, var = "tfs_old_q"),
+  mutate(tfs, var = "tfs_chained")
   )
 
 # Plot government social transfers for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Government Social Transfers")
 
-ggsave(filename = "37_gov_soctransf_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("37_gov_soctransf_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Total Government expenditure ----
-# We first interpolate the annual series in order to obtain quarterly series, 
-# and then we chain the quarterly series from the two different databases.
 totexp_old_a <- df_it |> 
   filter(var == "totexp_old") |> 
   mutate(value = value / 4)
@@ -2011,7 +1889,7 @@ totexp_old_q <- tibble(
     length.out = (nrow(totexp_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = totexp_old_a, by = join_by(period)) %>% 
+  left_join(totexp_old_a, join_by(period)) %>% 
   select(-value.x, value = value.y) %>% 
   mutate(value = na.spline(value), var = "totexp")
 
@@ -2028,23 +1906,21 @@ totexp <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = totexp_old_a, var = "totexp_old_a"),
-  mutate(.data = totexp_old_q, var = "totexp_old_q"),
-  mutate(.data = totexp, var = "totexp_chained")
+  mutate(totexp_old_a, var = "totexp_old_a"),
+  mutate(totexp_old_q, var = "totexp_old_q"),
+  mutate(totexp, var = "totexp_chained")
   )
 
 # Plot the total government expenditure for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Total Government Expenditure")
 
-ggsave(filename = "38_gov_exp_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("38_gov_exp_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Total government revenue ----
-# We first interpolate the annual series in order to obtain quarterly series, 
-# and then we chain the quarterly series from the two different databases.
 totrev_old_a <- df_it |> 
   filter(var == "totrev_old") |> 
   mutate(value = value / 4)
@@ -2055,8 +1931,8 @@ totrev_old_q <- tibble(
     length.out = (nrow(totrev_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = totrev_old_a, by = join_by(period)) |> 
-  select(-value.x,value = value.y) |> 
+  left_join(totrev_old_a, join_by(period)) |> 
+  select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "totrev")
 
 totrev_recent <- df_it |> 
@@ -2072,23 +1948,21 @@ totrev <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = totrev_old_a, var = "totrev_old_a"),
-  mutate(.data = totrev_old_q, var = "totrev_old_q"),
-  mutate(.data = totrev, var = "totrev_chained")
+  mutate(totrev_old_a, var = "totrev_old_a"),
+  mutate(totrev_old_q, var = "totrev_old_q"),
+  mutate(totrev, var = "totrev_chained")
   )
 
 # Plot the total government revenue for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Total Government Revenue")
 
-ggsave(filename = "39_gov_rev_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("39_gov_rev_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Government interest payments -----
-# We first interpolate the annual series in order to obtain quarterly series, 
-# and then we chain the quarterly series from the two different databases.
 intpay_old_a <- df_it |> 
   filter(var == "intpay_old") |> 
   mutate(value = value / 4)
@@ -2099,7 +1973,7 @@ intpay_old_q <- tibble(
     length.out = (nrow(intpay_old_a)-1)*4+1,
     by = "quarter"),
   value = NA) |> 
-  left_join(y = intpay_old_a, by = join_by(period)) |> 
+  left_join(intpay_old_a, join_by(period)) |> 
   select(-value.x, value = value.y) |> 
   mutate(value = na.spline(value), var = "intpay")
 
@@ -2116,22 +1990,20 @@ intpay <- chain(
   )
 
 plot_df <- bind_rows(
-  mutate(.data = intpay_old_a, var = "intpay_old_a"),
-  mutate(.data = intpay_old_q, var = "intpay_old_q"),
-  mutate(.data = intpay, var = "intpay_chained")
-  )
+  mutate(intpay_old_a, var = "intpay_old_a"),
+  mutate(intpay_old_q, var = "intpay_old_q"),
+  mutate(intpay, var = "intpay_chained"))
 
-# Plot the govenrment interest payments for Italy
-ggplot(data = plot_df, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+# Plot the government interest payments for Italy
+ggplot(plot_df, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Italy: Government Interest Payments")
 
-ggsave(filename = "40_gov_intpay_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("40_gov_intpay_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Italy: Merging data ----
-# We gather all the final series for Italy in a data frame.
 IT_rawdata <- df_it |> 
   filter(! var %in% c(
     "conso", "inves", "definves", "lendingrate_old", "lendingrate_recent",
@@ -2152,18 +2024,15 @@ IT_rawdata <- df_it |>
 
 ### Final database for the estimation ----
 
-# We retrieve the data on the implicit tax rates (ITR) 
-# on consumption, labour and corporate incomes, 
-# that we built specifically for this project.
-# URL: https://macro.cepremap.fr/article/2019-11/implicit_tax_rates/
-
 #### Implicit tax rates -----
-itr <- read_csv(file = "data/ITR_eurodata.csv") |> 
+# Implicit tax rates (ITR) consumption, labor and corporate incomes: https://macro.cepremap.fr/article/2019-11/implicit_tax_rates/
+
+itr <- read_csv("data/ITR_eurodata.csv") |> 
   rename(year = period)
 
 itrq <- tibble(period = EA_rawdata$period) |> 
   mutate(year = year(period)) |> 
-  left_join(y = itr, by = join_by(year)) |> 
+  left_join(itr, join_by(year)) |> 
   na.omit() |> 
   select(-year) |> 
   gather(var, value, -period) |> 
@@ -2180,15 +2049,13 @@ EA_rawdata_short <- EA_rawdata |>
 
 # Gather the datasets for France, Germany, Italy, Spain and the Euro area in a unique data frame. 
 rawdata_df <- bind_rows(EA_rawdata_short, DE_rawdata, ES_rawdata, FR_rawdata, IT_rawdata) |> 
-  left_join(y = itrq, by = join_by(period, country)) |> 
+  left_join(itrq, join_by(period, country)) |> 
   arrange(country, period) |>
-  filter(year(period) >= 1995)
-  # filter(year(period) >= 1995, period <= last_date)
+  filter(year(period) >= 1995, period <= last_date)
 
 save(rawdata_df, file = "data/rawdata.RData")
 
 #### Normalize data ----
-# Then we select and normalize the data by population and prices. 
 data_df <- rawdata_df |> 
   mutate(
     period,
@@ -2239,7 +2106,7 @@ plot_data_df <- data_df |>
       var == "tfs_rpc"       ~ "Real social transfers\n per capita",
       var == "othgov_rpc"    ~ "Real other public\n expenditure per capita",
       var == "debt_gdp"      ~ "Debt-to-GDP ratio",
-      var == "taun"          ~ "Implicit Tax Rate \n on labour income ",
+      var == "taun"          ~ "Implicit Tax Rate \n on labor income ",
       var == "tauwh"         ~ "Implicit Tax Rate \n on employees' SSC",
       var == "tauwf"         ~ "Implicit Tax Rate \n on employers' SSC" ,
       var == "tauc"          ~ "Implicit Tax Rate \n on consumption" , 
@@ -2262,18 +2129,18 @@ plot_data_df <- data_df |>
 # tikz not available for this version or R
 # tikz("estimated.tex", width = 5.2, height = 8.4, sanitize = TRUE)
 
-ggplot(data = plot_data_df, mapping = aes(x = period, y = value, col = country_name)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ varname, ncol = 3, scales = "free_y") +
+ggplot(plot_data_df, aes(period, value, col = country_name)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~varname, ncol = 3, scales = "free_y") +
   my_theme() +
   ggtitle("Series for the estimation")
 
-ggsave(filename = "41_estimation.png", path = fig_path, height = 12, width = 12)
+ggsave("41_estimation.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 df <- data_df |> 
   unite("var", c("country", "var")) |> 
-  mutate(period = gsub(pattern = " ", replacement = "", x = as.yearqtr(period))) |> 
+  mutate(period = gsub(" ", "", as.yearqtr(period))) |> 
   spread(var, value) |> 
   select(-c("DE_oil_prices", "FR_oil_prices", "ES_oil_prices", "IT_oil_prices"))
 
@@ -2284,18 +2151,14 @@ write.csv(df, file = "data/data_DE_EA_ES_FR_IT.csv", row.names = FALSE)
 # The data can be downloaded directly here: http://shiny.cepremap.fr/data/data_DE_EA_ES_FR_IT.csv
 
 ### Series for the calibration -----
-# For the calibration, we need additional series. 
-# The data needed for this purpose is retrieved below by variable.
 
 #### Leverage of non-financial corporations ----
-# Eurostat nasq_10_f_bs
-# The figure below shows the series for France, Germany, Italy, Spain and the Euro area 19.
 debt <- rdb("Eurostat", "nasq_10_f_bs", mask = "Q.MIO_EUR.S11.LIAB.F+F3+F4+F6.EA19+IT+DE+FR+ES")
 
 leverage <- debt |> 
   select(value, period, country = geo, var = na_item) |> 
   mutate(var = case_when(
-    var == "F" ~ "total",
+    var == "F"  ~ "total",
     var == "F3" ~ "debt_securities",
     var == "F4" ~ "loans",
     var == "F6" ~ "pensions_reserves"
@@ -2312,18 +2175,16 @@ leverage <- debt |>
     ) |> 
   na.omit()
 
-ggplot(data = leverage, mapping = aes(x = period, y = value, colour = country)) +
-  geom_line(linewidth = 1.2) +
+ggplot(leverage, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Leverage")
 
-ggsave(filename = "42_leverage.png", path = fig_path, height = 12, width = 12)
+ggsave("42_leverage.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### The deprecation of the capital stock ----
-# We compute the depreciation rate of the capital stock for France, Italy, Spain, Germany and the Euro Area since 1995. 
-# We use the data from the Penn World Table Feenstra et al. (2015) available here:
-# https://www.rug.nl/ggdc/productivity/pwt/
+# Penn World Table Feenstra et al. (2015): https://www.rug.nl/ggdc/productivity/pwt/
 list_country <- list(
   "France"    = "FRA",
   "Germany"   = "DEU",
@@ -2332,10 +2193,10 @@ list_country <- list(
   "Euro Area" = "EA"
   )
 
-# Use the `haven` tidyverse R package to read Stata DTA files: https://haven.tidyverse.org/reference/read_dta.html
-df <- haven::read_dta(file = "https://www.rug.nl/ggdc/docs/pwt100.dta") |> 
+# `haven` package to read Stata DTA files: https://haven.tidyverse.org/reference/read_dta.html
+df <- haven::read_dta("https://www.rug.nl/ggdc/docs/pwt100.dta") |> 
   mutate(country = countrycode, period = as.Date(as.yearqtr(year))) |> 
-  filter(year(period) >= 1995 & currency_unit == "Euro" & !grepl(pattern = "MNE", x = country))
+  filter(year(period) >= 1995 & currency_unit == "Euro" & !grepl("MNE", country))
 
 #### Step 1: Data for Euro Area countries ----
 delta <- df |> 
@@ -2343,11 +2204,7 @@ delta <- df |>
   add_column(var = "delta")
 
 #### Step 2: Euro Area GDP-weighted average ----
-# After retrieving the data on the average depreciation rate of the capital stock for the Euro Area countries, 
-# it is possible to build the GDP-weighted average for the Eurozone. 
-
-# First, it is necessary to establish the weights that will be used for this purpose, 
-# using the output-side real GDP at chained PPPs (in mil. 2011US$) of each country.
+# Get weights from output-side real GDP at chained PPPs (in mil. 2011US$) for each country.
 gdp <- df |> 
   select(country, period, value = rgdpo)
 
@@ -2357,13 +2214,12 @@ EA_gdp <- gdp |>
   ungroup()
 
 weights <- gdp |> 
-  left_join(y = EA_gdp, by = join_by(period)) |> 
+  left_join(EA_gdp, join_by(period)) |> 
   mutate(country, period, weight = value.x / value.y, .keep = "none")
 
-# Now we apply these weights to our country data in order to build the Euro Area GDP-weighted average. 
-# The figure below shows the final series for France, Germany, Italy, Spain and the Euro Area.
+# Apply the weights to the country data to build the Euro Area GDP-weighted average. 
 delta_EA <- delta |> 
-  left_join(y = weights, by = join_by(country, period))
+  left_join(weights, join_by(country, period))
 
 delta_EA <- delta_EA |> 
   mutate(period, value = value * weight, .keep = "none") |> 
@@ -2372,16 +2228,17 @@ delta_EA <- delta_EA |>
   add_column(country = "EA", var = "delta")
 
 delta_countries <- delta |> 
-  filter(grepl(pattern = 'FRA|DEU|ITA|ESP', x = country))
+  filter(grepl("FRA|DEU|ITA|ESP", country))
 
 delta_FIN <- bind_rows(delta_countries, delta_EA)
 
-ggplot(data = delta_FIN, mapping = aes(x = period, y = value, colour = country)) +
-  geom_line(linewidth = 1.2) +
+# Plot depreciation rate of the capital stock
+ggplot(delta_FIN, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Depreciation rate of the capital stock")
 
-ggsave(filename = "43_depreciation.png", path = fig_path, height = 12, width = 12)
+ggsave("43_depreciation.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### The share of capital revenues in GDP ----
@@ -2400,7 +2257,7 @@ alpha <- df |>
 # Now we apply the GDP-weights to our country data in order to build the Euro Area GDP-weighted average. 
 # The figure below shows the final series for France, Germany, Italy, Spain and the Euro Area.
 alpha_EA <- alpha |> 
-  left_join(y = weights, by = join_by(country, period))
+  left_join(weights, join_by(country, period))
 
 alpha_EA <- alpha_EA |> 
   mutate(period, value = value * weight, .keep = "none") |> 
@@ -2409,20 +2266,20 @@ alpha_EA <- alpha_EA |>
   add_column(country = "EA", var = "alpha")
 
 alpha_countries <- alpha |> 
-  filter(grepl(pattern = "FRA|DEU|ITA|ESP", x = country))
+  filter(grepl("FRA|DEU|ITA|ESP", country))
 
 alpha_FIN <- bind_rows(alpha_countries, alpha_EA)
 
-ggplot(data = alpha_FIN, aes(x = period, y = value, color = country)) +
-  geom_line(linewidth = 1.2) +
+# Plot the share of capital revenues in GDP
+ggplot(alpha_FIN, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Share of capital revenues in GDP")
 
-ggsave(filename = "44_capital_revenues.png", path = fig_path, height = 12, width = 12)
+ggsave("44_capital_revenues.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### The share of capital in GDP ----
-# We proceed in two steps. 
 
 #### Step 1: Data for Euro Area countries ----
 # We obtain the stock of capital in GDP also from the Penn World Table, 
@@ -2434,10 +2291,9 @@ capital <- df |>
   add_column(var = "capital_gdp")
 
 #### Step 2: Euro Area GDP-weighted average ----
-# Now we apply the GDP-weights to our country data in order to build the Euro Area GDP-weighted average. 
-# The figure below shows the final series for France, Germany, Italy, Spain and the Euro Area.
+# Apply the GDP-weights to our country data in order to build the Euro Area GDP-weighted average. 
 capital_EA <- capital |> 
-  left_join(y = weights, by = join_by(country, period))
+  left_join(weights, join_by(country, period))
 
 capital_EA <- capital_EA |> 
   mutate(period, value = value * weight, .keep = "none") |> 
@@ -2446,16 +2302,17 @@ capital_EA <- capital_EA |>
   add_column(country = "EA", var = "capital_gdp")
 
 capital_countries <- capital |> 
-  filter(grepl(pattern = "FRA|DEU|ITA|ESP", x = country))
+  filter(grepl("FRA|DEU|ITA|ESP", country))
 
 capital_FIN <- bind_rows(capital_countries, capital_EA)
 
-ggplot(data = capital_FIN, mapping = aes(x = period, y = value, color = country)) +
-  geom_line(linewidth = 1.2)+
+# Plot the stock of capital in GDP
+ggplot(capital_FIN, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2)+
   my_theme() +
   ggtitle("Stock of capital in GDP")
 
-ggsave(filename = "45_capital_shares.png", path = fig_path, height = 12, width = 12)
+ggsave("45_capital_shares.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### The share of crude oil imports in GDP ----
@@ -2473,7 +2330,7 @@ oil_import_value <- rdb("Eurostat", "nrg_ti_coifpm", mask = "M.TOTAL.VAL_THS_USD
       )
     )
 
-# in US $
+# in USD
 ea_gdp_usd <- rdb("IMF", "WEOAGG:latest", mask = "998.NGDPD.us_dollars") |> 
   select(period, gdp = value, country = `weo-countries-group`)
 
@@ -2491,7 +2348,7 @@ gdp_usd <- rdb("IMF", "WEO:latest", mask = "FRA+DEU+ITA+ESP.NGDPD.us_dollars") |
   )
 
 oil <- oil_import_value |> 
-  left_join(y = gdp_usd, by = join_by(country, period)) |> 
+  left_join(gdp_usd, join_by(country, period)) |> 
   mutate(
     period,
     value = oil_import / (gdp * 1000000),
@@ -2499,12 +2356,12 @@ oil <- oil_import_value |>
     .keep = "none"
     )
 
-ggplot(data = oil, mapping = aes(x = period, y = value, color = country)) +
-  geom_line(linewidth = 1.2) +
+ggplot(oil, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Share of oil imports in GDP")
 
-ggsave(filename = "46_oil_import_shares.png", path = fig_path, height = 12, width = 12)
+ggsave("46_oil_import_shares.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### The share of petrol in private consumption -----
@@ -2519,7 +2376,7 @@ hhconso <- rdb("Eurostat", "nama_10_gdp", mask = "A.PC_GDP.P31_S14.FR+DE+IT+ES+E
   filter(year(period) >= 2015)
 
 petrol_conso <- hhconso |> 
-  left_join(y = petrol_weight, by = join_by(country, period)) |> 
+  left_join(petrol_weight, join_by(country, period)) |> 
   na.omit() |> 
   mutate(
     period,
@@ -2529,12 +2386,12 @@ petrol_conso <- hhconso |>
     .keep = "none"
     )
 
-ggplot(data = petrol_conso, mapping = aes(x = period, y = value, color = country)) +
-  geom_line(linewidth = 1.2) +
+ggplot(petrol_conso, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Petrol consumption to GDP ratio")
 
-ggsave(filename = "47_petrol_cons_shares.png", path = fig_path, height = 12, width = 12)
+ggsave("47_petrol_cons_shares.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Share of final consumption in imports ----
@@ -2552,32 +2409,32 @@ imported_conso <- rdb("Eurostat", "naio_10_cp1700", mask = "A.MIO_EUR.IMP.P3+P51
     var = "imported_conso"
     )
 
-ggplot(data = imported_conso, mapping = aes(x = period, y = value, color = country)) +
-  geom_line(linewidth = 1.2) +
+ggplot(imported_conso, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Share of final consumption in total imports")
 
-ggsave(filename = "48_cons_imp_shares.png", path = fig_path, height = 12, width = 12)
+ggsave("48_cons_imp_shares.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Miscellaneous ----
 ea_gdp <- rdb(ids = "Eurostat/namq_10_gdp/Q.CP_MEUR.SCA.B1GQ.EA19") |> 
   select(period, gdp = value)
 
-df <- rdb("ECB", "TRD", mask = 'M.I8.Y.M+X.TTT.J8.4.VAL')
+df <- rdb("ECB", "TRD", mask = "M.I8.Y.M+X.TTT.J8.4.VAL")
 
 ea_trade <- df |> 
   mutate(
     period = paste(year(period), quarter(period), sep = "-"),
     value,
-    var = if_else(condition = grepl(pattern = "Import", x= series_name), true = "imports", false = "exports"),
+    var = if_else(condition = grepl("Import", x= series_name), true = "imports", false = "exports"),
     .keep = "none") |> 
   group_by(var, period) |> 
   summarize(value = sum(value)) |> 
   ungroup() |> 
   mutate(period = yq(period)) |> 
   spread(var, value) |> 
-  left_join(y = ea_gdp, by = join_by(period)) |> 
+  left_join(ea_gdp, join_by(period)) |> 
   mutate(
     period,
     imports_gdp = imports / (gdp * 1000),
@@ -2622,12 +2479,9 @@ alpha_delta_capital <- bind_rows(alpha_FIN, delta_FIN, capital_FIN) |>
     )
 
 leverage2 <- leverage |> 
-  mutate(
-    country = case_when(
-      country == "EA19" ~ "EA",
-      TRUE ~ country
-      )
-    )
+  mutate(country = case_when(
+    country == "EA19" ~ "EA",
+    TRUE ~ country))
 
 share <- rdb("Eurostat", "nama_10_gdp", mask = "A.CP_MPPS_EU27_2020.B1GQ.DE+FR+IT+ES+EA19")
 # Original: A.CP_MPPS.B1GQ.DE+FR+IT+ES+EA19
@@ -2641,14 +2495,13 @@ share2 <- share |>
     DE = DE/EA19,
     IT = IT / EA19,
     ES = ES / EA19,
-    .keep = "none"
-    ) |> 
+    .keep = "none") |> 
   gather(country, value, -period) |> 
   mutate(var = "share")
 
 ### Final series for the calibration, and steady state values by country ----
 rawdata <- bind_rows(EA_rawdata_short, FR_rawdata, ES_rawdata, IT_rawdata, DE_rawdata) |> 
-  left_join(y = itrq, by = join_by(country, period)) |> 
+  left_join(itrq, join_by(country, period)) |> 
   select(period, country, pubcons, pubinves, tfs, totexp, totrev, intpay, gdp, inves, tauk) |> 
   filter(period <= max(rawdata_df$period)) |> 
   gather(var, value, -country, -period) |> 
@@ -2715,7 +2568,7 @@ rawdata_growth_ratio <- rawdata |>
       var == "pubcons_gdp"     ~ "Government consumption \n to GDP ratio",
       var == "pubinves_gdp"    ~ "Government investment \n to GDP ratio",
       var == "shortrate"       ~ "Short-term \n interest rate (APR)",
-      var == "taun"            ~ "Implicit Tax Rate \n on labour income " ,
+      var == "taun"            ~ "Implicit Tax Rate \n on labor income " ,
       var == "tauwh"           ~ "Implicit Tax Rate \n on employees' SSC",
       var == "tauwf"           ~ "Implicit Tax Rate \n on employers' SSC",
       var == "tauc"            ~ "Implicit Tax Rate \n on consumption",
@@ -2736,13 +2589,13 @@ rawdata_growth_ratio <- rawdata |>
 # R package `tikz` is not available for this version of R
 # tikz("calibrated.tex", width = 5.2, height = 8.4, sanitize = TRUE)
 
-ggplot(data = rawdata_growth_ratio, mapping = aes(x = period, y = value, color = country)) +
-  geom_line(linewidth = 1.2)+
-  facet_wrap(facets = ~ varname, ncol = 3, scales = "free_y") +
+ggplot(rawdata_growth_ratio, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2)+
+  facet_wrap(~varname, ncol = 3, scales = "free_y") +
   my_theme() +
   ggtitle("Series for the calibration")
 
-ggsave(filename = "49_final.png", path = fig_path, height = 12, width = 12)
+ggsave("49_final.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 calibration <- rawdata_growth_ratio |> 

@@ -65,7 +65,7 @@ dbnomics <- function() {
   )
 }
 
-## theme ----
+## my_theme ----
 my_theme <- function() {
   list(
     scale_x_date(expand = c(0, 0)),
@@ -105,7 +105,7 @@ display_table <- function(DT) {
 }
 
 ## chain ----
-# To chain tow datasets, we build a custom `chain()` function whose
+# To chain two datasets, we build a custom `chain()` function whose
 # inputs must be two data frames with three standard columns
 # `period`, `var`, and `value`.
 
@@ -185,3 +185,4 @@ deseason <- function(source_df = data_large, var_arrange = "pubcons", ...) {
 
   return(res)
 }
+# END
