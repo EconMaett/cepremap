@@ -1,26 +1,19 @@
 # 01 - Macroeconomic data for FR, DE, IT, ES & EA ----
 # URL: https://macro.cepremap.fr/article/2021-02/five-countries-data/
-
-# Gather macroeconomic data for FR, DE, IT, ES & EA,
-# for the estimation and calibration of general equilibrium models.
-# The database can be automatically updated.
+# Macroeconomic data for general equilibrium models.
 library(tidyverse)
 library(zoo)
 library(rdbnomics)
 library(seasonal)
 library(kableExtra)
-
 source(file = "R/utils.R")
-
 fig_path <- "figures/01_five-countries-data"
 
-## The Euro Area -----
-# Gather the following databases:
+## Gather databases -----
 #   1. Smets & Wouters (2003) data base
 #   2. Financial database for the Euro Area
 #   3. Fiscal data base for the Euro Area
 #   4. International database for the Euro Area
-
 sw03 <- read_csv(file = "data/EA_SW_rawdata.csv") |>
   filter(period >= "1980-01-01")
 
@@ -40,7 +33,7 @@ EA_rawdata <- sw03 |>
 # Sources: Eurostat, IMF (WEO & IFS), BIS, OECD & ECB.
 
 ### Data retrieval & seasonal adjustment ----
-# Get country data on:
+# Country data on:
 #   - Gross domestic product (GDP)
 #   - Consumption (C)
 #   - Investment (I)
@@ -68,64 +61,64 @@ EA_rawdata <- sw03 |>
 # Oil prices are assumed to be the same in all countries.
 
 #### Compensation of employees ----
-# Eurostat namq_10_a10 database
-wage_de_fr <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_a10", mask = "Q.CP_MEUR.SA.TOTAL.D1.DE+FR") |>
+# Eurostat: namq_10_a10
+wage_de_fr <- rdb("Eurostat", "namq_10_a10", mask = "Q.CP_MEUR.SA.TOTAL.D1.DE+FR") |>
   add_column(var = "wage")
 
-wage_es_it <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_a10", mask = "Q.CP_MEUR.SCA.TOTAL.D1.ES+IT") |>
+wage_es_it <- rdb("Eurostat", "namq_10_a10", mask = "Q.CP_MEUR.SCA.TOTAL.D1.ES+IT") |>
   add_column(var = "wage")
 
 #### Hours worked ----
-# Eurostat namq_10_a10_e database
-hours <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_a10_e", mask = "Q.THS_HW.TOTAL.SCA.EMP_DC.IT+DE+FR+ES") |>
+# Eurostat: namq_10_a10_e
+hours <- rdb("Eurostat", "namq_10_a10_e", mask = "Q.THS_HW.TOTAL.SCA.EMP_DC.IT+DE+FR+ES") |>
   add_column(var = "hours")
 
 #### Gross domestic product -----
-# Eurostat namq_10_gdp
-gdp <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_gdp", mask = "Q.CLV10_MEUR.SCA.B1GQ.IT+DE+FR+ES") |>
+# Eurostat: namq_10_gdp
+gdp <- rdb("Eurostat", "namq_10_gdp", mask = "Q.CLV10_MEUR.SCA.B1GQ.IT+DE+FR+ES") |>
   add_column(var = "gdp")
 
 #### Consumption -----
-# Eurostat namq_10_gdp
-conso <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_gdp", mask = "Q.CLV10_MEUR.SCA.P31_S14_S15.IT+DE+FR+ES") |>
+# Eurostat: namq_10_gdp
+conso <- rdb("Eurostat", "namq_10_gdp", mask = "Q.CLV10_MEUR.SCA.P31_S14_S15.IT+DE+FR+ES") |>
   add_column(var = "conso")
 
 #### Investment -----
-# Eurostat namq_10_gdp
-inves <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_gdp", mask = "Q.CLV10_MEUR.SCA.P51G.IT+DE+FR+ES") |>
+# Eurostat: namq_10_gdp
+inves <- rdb("Eurostat", "namq_10_gdp", mask = "Q.CLV10_MEUR.SCA.P51G.IT+DE+FR+ES") |>
   add_column(var = "inves")
 
 #### GDP deflator -----
-# Eurostat namq_10_gdp
-defgdp <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_gdp", mask = "Q.PD10_EUR.SCA.B1GQ.IT+DE+FR+ES") |>
+# Eurostat: namq_10_gdp
+defgdp <- rdb("Eurostat", "namq_10_gdp", mask = "Q.PD10_EUR.SCA.B1GQ.IT+DE+FR+ES") |>
   add_column(var = "defgdp")
 
 #### Investment deflator -----
-# Eurostat namq_10_gdp
-definves <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_gdp", mask = "Q.PD10_EUR.SCA.P51G.IT+DE+FR+ES") |>
+# Eurostat: namq_10_gdp
+definves <- rdb("Eurostat", "namq_10_gdp", mask = "Q.PD10_EUR.SCA.P51G.IT+DE+FR+ES") |>
   add_column(var = "definves")
 
 #### Population -----
-# Eurostat lfsq_pganws, demo_pjanbroad are chained and interpolated
-pop_recent <- rdb(provider_code = "Eurostat", dataset_code = "lfsq_pganws", mask = "Q.THS_PER.T.TOTAL.Y15-64.POP.IT+DE+FR+ES") |>
+# Eurostat: lfsq_pganws, demo_pjanbroad, chained and interpolated
+pop_recent <- rdb("Eurostat", "lfsq_pganws", mask = "Q.THS_PER.T.TOTAL.Y15-64.POP.IT+DE+FR+ES") |>
   add_column(var = "pop_recent")
 
-pop_old <- rdb(provider_code = "Eurostat", dataset_code = "demo_pjanbroad", mask = "A.NR.Y15-64.T.IT+DE+FR+ES") |>
+pop_old <- rdb("Eurostat", "demo_pjanbroad", mask = "A.NR.Y15-64.T.IT+DE+FR+ES") |>
   add_column(var = "pop_old")
 
 #### Government consumption ----
-# For IT & DE we chain & interpolate quarterly series
-# Eurostat gov_10q_ggnfa & gov_10a_main"
-pubcons_recent_fr <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.P3.FR") |>
+# IT & DE: chain & interpolate quarterly series
+# Eurostat: gov_10q_ggnfa, gov_10a_main"
+pubcons_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.P3.FR") |>
   add_column(var = "pubcons_recent")
 
-pubcons_recent_it_de_es_nsa <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.P3.IT+DE+ES") |>
+pubcons_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.P3.IT+DE+ES") |>
   add_column(var = "pubcons_recent")
 
-pubcons_old_it_de <- rdb(provider_code = "Eurostat", dataset_code = "gov_10a_main", mask = "A.MIO_EUR.S13.P3.IT+DE") |>
+pubcons_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.P3.IT+DE") |>
   add_column(var = "pubcons_old")
 
-# gov_10q_ggnfa needs to be seasonally adjusted.
+# Seasonally adjust gov_10q_ggnfa
 df_nsa_q <- pubcons_recent_it_de_es_nsa |>
   select(period, country = geo, value)
 
@@ -164,20 +157,19 @@ pubcons_recent_it_de_es <- deseasoned_q |>
   select(country, -Origin, value, period) |>
   mutate(var = "pubcons_recent")
 
-#### Government investment -----
-# For IT & DE use two databases from Eurostat that we will chain and 
-# interpolate by country in the next section: 
-# gov_10q_ggnfa & gov_10a_main.
-pubinves_recent_fr <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.P51G.FR") |>
+#### Government investment ----
+# IT & DE: Eurostat: gov_10q_ggnfa, gov_10a_main.
+# Will be chained & interpolated in the next section.
+pubinves_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.P51G.FR") |>
   add_column(var = "pubinves_recent")
 
-pubinves_recent_it_de_es_nsa <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.P51G.IT+DE+ES") |>
+pubinves_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.P51G.IT+DE+ES") |>
   add_column(var = "pubinves_recent")
 
-pubinves_old_it_de <- rdb(provider_code = "Eurostat", dataset_code = "gov_10a_main", mask = "A.MIO_EUR.S13.P51G.IT+DE") |>
+pubinves_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.P51G.IT+DE") |>
   add_column(var = "pubinves_old")
 
-# Seasonally-adjust the gov_10q_ggnfa for IT & DE
+# Seasonally-adjust gov_10q_ggnfa for IT & DE
 df_nsa_q <- pubinves_recent_it_de_es_nsa |>
   select(period, country = geo, value)
 
@@ -217,14 +209,14 @@ pubinves_recent_it_de_es <- deseasoned_q |>
   mutate(var = "pubinves_recent")
 
 #### Government interest payments ----
-# IT & DE chain and interpolate Eurostat gov_10q_ggnfa, gov_10a_main
-tfs_recent_fr <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.D62PAY.FR") |>
+# IT & DE: chain and interpolate Eurostat: gov_10q_ggnfa, gov_10a_main
+tfs_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.D62PAY.FR") |>
   add_column(var = "tfs_recent")
 
-tfs_recent_it_de_es_nsa <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D62PAY.IT+DE+ES") |>
+tfs_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D62PAY.IT+DE+ES") |>
   add_column(var = "tfs_recent")
 
-tfs_old_it_de <- rdb(provider_code = "Eurostat", dataset_code = "gov_10a_main", mask = "A.MIO_EUR.S13.D62PAY.IT+DE") |>
+tfs_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.D62PAY.IT+DE") |>
   add_column(var = "tfs_old")
 
 # Seasonally-adjust the series for Italy and Germany
@@ -267,13 +259,13 @@ tfs_recent_it_de_es <- deseasoned_q |>
 
 #### Government interest payments ----
 # IT & DE chain & interpolate Eurostat gov_10q_ggnfa, gov_10a_main
-intpay_recent_fr <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.D41PAY.FR") |>
+intpay_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.D41PAY.FR") |>
   add_column(var = "intpay_recent")
 
-intpay_recent_it_de_es_nsa <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D41PAY.IT+DE+ES") |>
+intpay_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D41PAY.IT+DE+ES") |>
   add_column(var = "intpay_recent")
 
-intpay_old_it_de <- rdb(provider_code = "Eurostat", dataset_code = "gov_10a_main", mask = "A.MIO_EUR.S13.D41PAY.DE+IT") |>
+intpay_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.D41PAY.DE+IT") |>
   add_column(var = "intpay_old")
 
 # Seasonally adjust the data for Italy and Germany
@@ -299,7 +291,7 @@ df_nsa_q <- df_nsa_q |>
 plot_df <- bind_rows(df_nsa_q, deseasoned_q) |>
   na.omit()
 
-# Plot government interst payments for DE, ES, & IT
+# Plot government interest payments for DE, ES, & IT
 ggplot(data = plot_df, mapping = aes(x = period, y = value, colour = Origin)) +
   geom_line(linewidth = 1.2) +
   facet_wrap(facets = ~country, scales = "free_y", ncol = 2) +
@@ -318,13 +310,13 @@ intpay_recent_it_de_es <- deseasoned_q |>
 
 #### Total government expenditure ----
 # IT & DE & interpolate Eurostat gov_10q_ggnfa, gov_10a_main
-totexp_recent_fr <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.TE.FR") |>
+totexp_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.TE.FR") |>
   add_column(var = "totexp_recent")
 
-totexp_recent_it_de_es_nsa <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.TE.IT+DE+ES") |>
+totexp_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.TE.IT+DE+ES") |>
   add_column(var = "totexp_recent")
 
-totexp_old_it_de <- rdb(provider_code = "Eurostat", dataset_code = "gov_10a_main", mask = "A.MIO_EUR.S13.TE.DE+IT") |>
+totexp_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.TE.DE+IT") |>
   add_column(var = "totexp_old")
 
 # Seasonally adjust the data for DE, ES & IT from gov_10q_ggnfa
@@ -353,7 +345,7 @@ plot_df <- bind_rows(df_nsa_q, deseasoned_q) |>
 # Plot total govenrment expenditure for DE, ES & IT
 ggplot(data = plot_df, mapping = aes(x = period, y = value, colour = Origin)) +
   geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~country, scales = "free_y", ncol = 2) +
+  facet_wrap(facets = ~ country, scales = "free_y", ncol = 2) +
   my_theme() +
   ggtitle("Total Government Expenditure")
 
@@ -368,13 +360,13 @@ totexp_recent_it_de_es <- deseasoned_q |>
 
 #### Total government revenue -----
 # For IT & DE chain and interpolate Eurostat gov_10q_ggnfa & gov_10a_main
-totrev_recent_fr <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.TR.FR") |>
+totrev_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.TR.FR") |>
   add_column(var = "totrev_recent")
 
-totrev_recent_it_de_es_nsa <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.TR.IT+DE+ES") |>
+totrev_recent_it_de_es_nsa <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.TR.IT+DE+ES") |>
   add_column(var = "totrev_recent")
 
-totrev_old_it_de <- rdb(provider_code = "Eurostat", dataset_code = "gov_10a_main", mask = "A.MIO_EUR.S13.TR.DE+IT") |>
+totrev_old_it_de <- rdb("Eurostat", "gov_10a_main", mask = "A.MIO_EUR.S13.TR.DE+IT") |>
   add_column(var = "totrev_old")
 
 # Seasonally adjust gov_10q_ggnfa for DE, ES, & IT
@@ -418,10 +410,10 @@ totrev_recent_it_de_es <- deseasoned_q |>
 
 #### Government debt -----
 # Use Eurostat gov_10q_ggdebt & IMF WEO
-debt_recent <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggdebt", mask = "Q.GD.S13.MIO_EUR.IT+DE+FR+ES") |>
+debt_recent <- rdb("Eurostat", "gov_10q_ggdebt", mask = "Q.GD.S13.MIO_EUR.IT+DE+FR+ES") |>
   add_column(var = "debt_recent")
 
-debt_old <- rdb(provider_code = "IMF", dataset_code = "WEO:latest", mask = "DEU+ESP+FRA+ITA.GGXWDG") |>
+debt_old <- rdb("IMF", "WEO:latest", mask = "DEU+ESP+FRA+ITA.GGXWDG") |>
   add_column(var = "debt_old") |>
   select(geo = "weo-country", period, value, var) |>
   mutate(geo = str_sub(string = geo, start = 1, end = 2)) |>
@@ -468,14 +460,14 @@ debt_recent <- deseasoned_q |>
 
 #### Loans to non-financial corporations -----
 # CNFS database from the Bank for International Settlements (BIS)
-loans_nfc <- rdb(provider_code = "BIS", dataset_code = "total_credit", mask = "Q.IT+DE+FR+ES.N.A.M.XDC.A") |>
+loans_nfc <- rdb("BIS", "total_credit", mask = "Q.IT+DE+FR+ES.N.A.M.XDC.A") |>
   add_column(var = "loans_nfc") |>
   as_tibble() |>
   select(geo = BORROWERS_CTY, period, value, var)
 
 #### Entrepreneurial net worth ----
 # Main Economic Indicators (MEI) of the OECD
-networth <- rdb(provider_code = "OECD", dataset_code = "MEI", mask = "FRA+DEU+ITA+ESP.SPASTT01.IXOB.Q") |>
+networth <- rdb("OECD", "MEI", mask = "FRA+DEU+ITA+ESP.SPASTT01.IXOB.Q") |>
   as_tibble() |>
   select(period, value, geo = LOCATION) |>
   add_column(var = "networth") |>
@@ -490,7 +482,7 @@ networth <- rdb(provider_code = "OECD", dataset_code = "MEI", mask = "FRA+DEU+IT
 
 #### Short-term interest rate ----
 # OECD Main Economic Indicators (MEI)
-shortrate <- rdb(provider_code = "OECD", dataset_code = "MEI", mask = "FRA+DEU+ITA+ESP.IR3TIB01.ST.Q") |>
+shortrate <- rdb("OECD", "MEI", mask = "FRA+DEU+ITA+ESP.IR3TIB01.ST.Q") |>
   as_tibble() |>
   select(period, value, geo = LOCATION) |>
   add_column(var = "shortrate") |>
@@ -505,7 +497,7 @@ shortrate <- rdb(provider_code = "OECD", dataset_code = "MEI", mask = "FRA+DEU+I
 
 #### Lending rate ----
 # Use the ECB MIR and IMF IFS to chain and interpolate by country.
-lendingrate_recent <- rdb(provider_code = "ECB", dataset_code = "MIR", mask = "M.IT+DE+FR+ES.B.A2A.A.R.A.2240.EUR.N") |>
+lendingrate_recent <- rdb("ECB", "MIR", mask = "M.IT+DE+FR+ES.B.A2A.A.R.A.2240.EUR.N") |>
   as_tibble() |>
   select(geo = REF_AREA, period, value) |>
   mutate(period = paste(year(period), quarter(period))) |>
@@ -513,7 +505,7 @@ lendingrate_recent <- rdb(provider_code = "ECB", dataset_code = "MIR", mask = "M
   summarize(value = mean(value, na.rm = TRUE)) |>
   mutate(var = "lendingrate_recent", period = yq(period))
 
-lendingrate_old <- rdb(provider_code = "IMF", dataset_code = "IFS", mask = "Q.IT+DE+FR+ES.FILR_PA") |>
+lendingrate_old <- rdb("IMF", "IFS", mask = "Q.IT+DE+FR+ES.FILR_PA") |>
   as_tibble() |>
   add_column(var = "lendingrate_old") |>
   select(geo = REF_AREA, period, value, var)
@@ -530,7 +522,7 @@ world_demand <- read_csv(file = "data/Foreign_demand.csv") |>
 
 # 1. Retrieve government social expenditures and calculate quarterly shares for each year
 url_filter <- "Q.MIO_EUR.NSA.S13.D62PAY.IT+DE+FR+ES"
-df <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = url_filter)
+df <- rdb("Eurostat", "gov_10q_ggnfa", mask = url_filter)
 
 socialexp <- df |>
   mutate(year = year(period), country = geo) |>
@@ -627,7 +619,7 @@ unempbenef_recent <- unempbenef_q_deseasoned |>
 # 4. Retrieve the annual series from Eurostat spr_exp_sum
 # that will later be interpolated and chained to the quarterly series.
 url_filter <- "A.UNEMPLOY.MIO_EUR.IT+DE+FR+ES"
-df <- rdb(provider_code = "Eurostat", dataset_code = "spr_exp_sum", mask = url_filter)
+df <- rdb("Eurostat", "spr_exp_sum", mask = url_filter)
 
 unempbenef_old <- df |>
   add_column(var = "unempbenef_old") |>
@@ -635,7 +627,7 @@ unempbenef_old <- df |>
 
 #### Nominal effective exchange rate ----
 # eer from BIS
-df <- rdb(provider_code = "BIS", dataset_code = "eer", mask = "M.N.B.IT+DE+FR+ES")
+df <- rdb("BIS", "eer", mask = "M.N.B.IT+DE+FR+ES")
 
 neer <- df |>
   select(period, value, geo = REF_AREA) |>
@@ -644,10 +636,9 @@ neer <- df |>
   summarize(value = mean(value)) |>
   mutate(period = yq(period), var = "neer")
 
-
 #### Imports and exports ----
 # OECD Economic Outlook (OE) database
-df <- rdb(provider_code = "OECD", dataset_code = "EO", mask = "FRA+DEU+ITA+ESP.MGSV+XGSV.Q")
+df <- rdb("OECD", "EO", mask = "FRA+DEU+ITA+ESP.MGSV+XGSV.Q")
 
 imports_exports_volume <- df |>
   select(period, value, geo = LOCATION, value, var = VARIABLE) |>
@@ -712,7 +703,7 @@ df <- bind_rows(
 # Plot the unchained series for DE, ES, FR, IT
 ggplot(data = df, mapping = aes(x = period, y = value, colour = country)) +
   geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~var, ncol = 3, scales = "free_y") +
+  facet_wrap(facets = ~ var, ncol = 3, scales = "free_y") +
   my_theme() +
   ggtitle("Unchained Series")
 
@@ -1581,7 +1572,7 @@ df_it <- df |>
 # for Italy before 1996, but annual data is.
 # We interpolate the annual series to obtain quarterly values,
 # and then we chain the two quarterly series in 1996-01-01.
-conso_old_a <- rdb(provider_code = "Eurostat", dataset_code = "nama_10_gdp", mask = "A.CLV10_MEUR.P31_S14_S15.IT") |> 
+conso_old_a <- rdb("Eurostat", "nama_10_gdp", mask = "A.CLV10_MEUR.P31_S14_S15.IT") |> 
   select(period, value) |> 
   add_column(var = "conso_old") |> 
   mutate(value = value / 4)
@@ -1627,7 +1618,7 @@ graphics.off()
 # but annual data exists.
 # We interpolate the annual series to obtain quarterly values,
 # and then chain the two quarterly series in 1996-01-01
-inves_old_a <- rdb(provider_code = "Eurostat", dataset_code = "nama_10_gdp", mask = "A.CLV10_MEUR.P51G.IT") |> 
+inves_old_a <- rdb("Eurostat", "nama_10_gdp", mask = "A.CLV10_MEUR.P51G.IT") |> 
   select(period, value) |> 
   add_column(var = "inves_old") |> 
   mutate(value = value / 4)
@@ -1672,7 +1663,7 @@ graphics.off()
 # Quarterly data on investment deflator is unavailable for Italy before 1996,
 # but annual data is. We interpolate the annual series to obtain quarterly values
 # and chain the two quarterly series in 1996-01-01.
-definves_old_a <- rdb(provider_code = "Eurostat", dataset_code = "nama_10_gdp", mask = "A.PD10_EUR.P51G.IT") |> 
+definves_old_a <- rdb("Eurostat", "nama_10_gdp", mask = "A.PD10_EUR.P51G.IT") |> 
   select(period, value) |> 
   add_column(var = "definves_old")
 
@@ -2159,55 +2150,624 @@ IT_rawdata <- df_it |>
   spread(var, value) |> 
   add_column(country = "IT")
 
-
 ### Final database for the estimation ----
 
+# We retrieve the data on the implicit tax rates (ITR) 
+# on consumption, labour and corporate incomes, 
+# that we built specifically for this project.
+# URL: https://macro.cepremap.fr/article/2019-11/implicit_tax_rates/
+
 #### Implicit tax rates -----
+itr <- read_csv(file = "data/ITR_eurodata.csv") |> 
+  rename(year = period)
+
+itrq <- tibble(period = EA_rawdata$period) |> 
+  mutate(year = year(period)) |> 
+  left_join(y = itr, by = join_by(year)) |> 
+  na.omit() |> 
+  select(-year) |> 
+  gather(var, value, -period) |> 
+  separate(var, c("country", "var")) |> 
+  spread(var, value)
 
 #### Merge raw data ----
+rawdata_var <- colnames(DE_rawdata)
+
+# real exchange rate or nominal exchange rate?
+EA_rawdata_short <- EA_rawdata |> 
+  rename(neer = reer) |> 
+  select(all_of(rawdata_var), oil_prices)
+
+# Gather the datasets for France, Germany, Italy, Spain and the Euro area in a unique data frame. 
+rawdata_df <- bind_rows(EA_rawdata_short, DE_rawdata, ES_rawdata, FR_rawdata, IT_rawdata) |> 
+  left_join(y = itrq, by = join_by(period, country)) |> 
+  arrange(country, period) |>
+  filter(year(period) >= 1995)
+  # filter(year(period) >= 1995, period <= last_date)
+
+save(rawdata_df, file = "data/rawdata.RData")
 
 #### Normalize data ----
+# Then we select and normalize the data by population and prices. 
+data_df <- rawdata_df |> 
+  mutate(
+    period,
+    country,
+    gdp_rpc       = 1e+6 * gdp / pop,
+    conso_rpc     = 1e+6 * conso / pop,
+    inves_rpc     = 1e+6 * inves / pop,
+    defgdp        = defgdp,
+    wage_rph      = 1e+6 * wage / defgdp / (hours * 1000),
+    hours_pc      = (hours * 1000) / pop,
+    pinves_defl   = definves / defgdp,
+    loans_nfc_rpc = 1e+9 * loans_nfc / pop / defgdp,
+    networth_rpc  = 1e+6 * networth / pop / defgdp,
+    re            = shortrate / 100,
+    creditspread  = (lendingrate - shortrate) / 100,
+    pubcons_rpc   = 100 * 1e+6 * pubcons / (defgdp * pop),
+    pubinves_rpc  = 100 * 1e+6 * pubinves / (defgdp * pop),
+    tfs_rpc       = 100 * 1e+6 * tfs / (defgdp * pop),
+    othgov_rpc    = 100 * 1e+6 * (totexp - pubcons - pubinves - tfs - intpay) / (defgdp * pop),
+    debt_gdp      = 100 * debt / (defgdp * gdp),
+    taun, tauwf, tauwh, tauc,
+    world_demand,
+    oil_prices,
+    neer,
+    imports_rpc = imports / pop,
+    exports_rpc = exports / pop,
+    .keep = "none"
+    ) |> 
+  gather(var, value, -period, -country)
 
+# The figure below shows the final series for all the listed countries.
+plot_data_df <- data_df |> 
+  mutate(
+    varname = case_when(
+      var == "gdp_rpc"       ~ "Real GDP per capita",
+      var == "conso_rpc"     ~ "Real consumption \n per capita",
+      var == "inves_rpc"     ~ "Real investment \n per capita",
+      var == "defgdp"        ~ "GDP deflator",
+      var == "wage_rph"      ~ "Real wage per hour" ,
+      var == "hours_pc"      ~ "Hours worked per capita",
+      var == "pinves_defl"   ~ "Real price of investment",
+      var == "loans_nfc_rpc" ~ "Real credit to \n NFC per capita", 
+      var == "networth_rpc"  ~ "Real net worth \n per capita",  
+      var == "re"            ~ "Short-term \n interest rate (APR)",
+      var == "creditspread"  ~ "Credit spread (APP)",
+      var == "pubcons_rpc"   ~ "Real public consumption\n per capita",
+      var == "pubinves_rpc"  ~ "Real public investment\n per capita",
+      var == "tfs_rpc"       ~ "Real social transfers\n per capita",
+      var == "othgov_rpc"    ~ "Real other public\n expenditure per capita",
+      var == "debt_gdp"      ~ "Debt-to-GDP ratio",
+      var == "taun"          ~ "Implicit Tax Rate \n on labour income ",
+      var == "tauwh"         ~ "Implicit Tax Rate \n on employees' SSC",
+      var == "tauwf"         ~ "Implicit Tax Rate \n on employers' SSC" ,
+      var == "tauc"          ~ "Implicit Tax Rate \n on consumption" , 
+      var == "world_demand"  ~ "Foreign demand",
+      var == "oil_prices"    ~ "Crude oil prices",
+      var == "neer"          ~ "Nominal effective exchange rate",
+      var == "imports_rpc"   ~ "Real imports per capita",
+      var == "exports_rpc"   ~ "Real exports per capita"
+      ),
+    country_name = case_when(
+      country == "FR" ~ "France",
+      country == "DE" ~ "Germany",
+      country == "IT" ~ "Italy",
+      country == "ES" ~ "Spain",
+      country == "EA" ~ "Euro Area"
+      )
+    ) |> 
+  na.omit()
+
+# tikz not available for this version or R
+# tikz("estimated.tex", width = 5.2, height = 8.4, sanitize = TRUE)
+
+ggplot(data = plot_data_df, mapping = aes(x = period, y = value, col = country_name)) +
+  geom_line(linewidth = 1.2) +
+  facet_wrap(facets = ~ varname, ncol = 3, scales = "free_y") +
+  my_theme() +
+  ggtitle("Series for the estimation")
+
+ggsave(filename = "41_estimation.png", path = fig_path, height = 12, width = 12)
+graphics.off()
+
+df <- data_df |> 
+  unite("var", c("country", "var")) |> 
+  mutate(period = gsub(pattern = " ", replacement = "", x = as.yearqtr(period))) |> 
+  spread(var, value) |> 
+  select(-c("DE_oil_prices", "FR_oil_prices", "ES_oil_prices", "IT_oil_prices"))
+
+colnames(df)[1] <- ""
+
+write.csv(df, file = "data/data_DE_EA_ES_FR_IT.csv", row.names = FALSE)
+
+# The data can be downloaded directly here: http://shiny.cepremap.fr/data/data_DE_EA_ES_FR_IT.csv
 
 ### Series for the calibration -----
+# For the calibration, we need additional series. 
+# The data needed for this purpose is retrieved below by variable.
 
 #### Leverage of non-financial corporations ----
+# Eurostat nasq_10_f_bs
+# The figure below shows the series for France, Germany, Italy, Spain and the Euro area 19.
+debt <- rdb("Eurostat", "nasq_10_f_bs", mask = "Q.MIO_EUR.S11.LIAB.F+F3+F4+F6.EA19+IT+DE+FR+ES")
 
+leverage <- debt |> 
+  select(value, period, country = geo, var = na_item) |> 
+  mutate(var = case_when(
+    var == "F" ~ "total",
+    var == "F3" ~ "debt_securities",
+    var == "F4" ~ "loans",
+    var == "F6" ~ "pensions_reserves"
+    )
+  ) |> 
+  spread(var, value) |> 
+  arrange(country, period) |> 
+  mutate(
+    period,
+    country,
+    value = (debt_securities + loans + pensions_reserves) / total,
+    var="leverage",
+    .keep = "none"
+    ) |> 
+  na.omit()
+
+ggplot(data = leverage, mapping = aes(x = period, y = value, colour = country)) +
+  geom_line(linewidth = 1.2) +
+  my_theme() +
+  ggtitle("Leverage")
+
+ggsave(filename = "42_leverage.png", path = fig_path, height = 12, width = 12)
+graphics.off()
 
 ### The deprecation of the capital stock ----
+# We compute the depreciation rate of the capital stock for France, Italy, Spain, Germany and the Euro Area since 1995. 
+# We use the data from the Penn World Table Feenstra et al. (2015) available here:
+# https://www.rug.nl/ggdc/productivity/pwt/
+list_country <- list(
+  "France"    = "FRA",
+  "Germany"   = "DEU",
+  "Italy"     = "ITA",
+  "Spain"     = "ESP",
+  "Euro Area" = "EA"
+  )
+
+# Use the `haven` tidyverse R package to read Stata DTA files: https://haven.tidyverse.org/reference/read_dta.html
+df <- haven::read_dta(file = "https://www.rug.nl/ggdc/docs/pwt100.dta") |> 
+  mutate(country = countrycode, period = as.Date(as.yearqtr(year))) |> 
+  filter(year(period) >= 1995 & currency_unit == "Euro" & !grepl(pattern = "MNE", x = country))
 
 #### Step 1: Data for Euro Area countries ----
+delta <- df |> 
+  select(country, period, value = delta) |> 
+  add_column(var = "delta")
 
 #### Step 2: Euro Area GDP-weighted average ----
+# After retrieving the data on the average depreciation rate of the capital stock for the Euro Area countries, 
+# it is possible to build the GDP-weighted average for the Eurozone. 
 
+# First, it is necessary to establish the weights that will be used for this purpose, 
+# using the output-side real GDP at chained PPPs (in mil. 2011US$) of each country.
+gdp <- df |> 
+  select(country, period, value = rgdpo)
+
+EA_gdp <- gdp |> 
+  group_by(period) |> 
+  summarize(value = sum(value)) |> 
+  ungroup()
+
+weights <- gdp |> 
+  left_join(y = EA_gdp, by = join_by(period)) |> 
+  mutate(country, period, weight = value.x / value.y, .keep = "none")
+
+# Now we apply these weights to our country data in order to build the Euro Area GDP-weighted average. 
+# The figure below shows the final series for France, Germany, Italy, Spain and the Euro Area.
+delta_EA <- delta |> 
+  left_join(y = weights, by = join_by(country, period))
+
+delta_EA <- delta_EA |> 
+  mutate(period, value = value * weight, .keep = "none") |> 
+  group_by(period) |> 
+  summarize(value = sum(value)) |> 
+  add_column(country = "EA", var = "delta")
+
+delta_countries <- delta |> 
+  filter(grepl(pattern = 'FRA|DEU|ITA|ESP', x = country))
+
+delta_FIN <- bind_rows(delta_countries, delta_EA)
+
+ggplot(data = delta_FIN, mapping = aes(x = period, y = value, colour = country)) +
+  geom_line(linewidth = 1.2) +
+  my_theme() +
+  ggtitle("Depreciation rate of the capital stock")
+
+ggsave(filename = "43_depreciation.png", path = fig_path, height = 12, width = 12)
+graphics.off()
 
 ### The share of capital revenues in GDP ----
+# We proceed in two steps. 
 
 #### Step 1: Data for Euro Area countries ----
+# We obtain the share of labor compensation in GDP also from the Penn World Table, 
+# for the countries that compose the Euro Area. 
+# We deduce then the share of capital revenues in GDP
+alpha <- df |> 
+  select(country, period, value = labsh) |> 
+  mutate(value = 1 - value) |> 
+  add_column(var = "alpha")
 
 #### Step 2: Euro Area GDP-weighted average ----
+# Now we apply the GDP-weights to our country data in order to build the Euro Area GDP-weighted average. 
+# The figure below shows the final series for France, Germany, Italy, Spain and the Euro Area.
+alpha_EA <- alpha |> 
+  left_join(y = weights, by = join_by(country, period))
 
+alpha_EA <- alpha_EA |> 
+  mutate(period, value = value * weight, .keep = "none") |> 
+  group_by(period) |> 
+  summarize(value = sum(value)) |> 
+  add_column(country = "EA", var = "alpha")
+
+alpha_countries <- alpha |> 
+  filter(grepl(pattern = "FRA|DEU|ITA|ESP", x = country))
+
+alpha_FIN <- bind_rows(alpha_countries, alpha_EA)
+
+ggplot(data = alpha_FIN, aes(x = period, y = value, color = country)) +
+  geom_line(linewidth = 1.2) +
+  my_theme() +
+  ggtitle("Share of capital revenues in GDP")
+
+ggsave(filename = "44_capital_revenues.png", path = fig_path, height = 12, width = 12)
+graphics.off()
 
 ### The share of capital in GDP ----
+# We proceed in two steps. 
 
 #### Step 1: Data for Euro Area countries ----
+# We obtain the stock of capital in GDP also from the Penn World Table, 
+# for the countries that compose the Euro Area. 
+capital <- df |> 
+  select(country, period, gdp = rgdpna, capital = rnna) |> 
+  mutate(value = capital / gdp) |> 
+  select(-capital, -gdp) |> 
+  add_column(var = "capital_gdp")
 
 #### Step 2: Euro Area GDP-weighted average ----
+# Now we apply the GDP-weights to our country data in order to build the Euro Area GDP-weighted average. 
+# The figure below shows the final series for France, Germany, Italy, Spain and the Euro Area.
+capital_EA <- capital |> 
+  left_join(y = weights, by = join_by(country, period))
 
+capital_EA <- capital_EA |> 
+  mutate(period, value = value * weight, .keep = "none") |> 
+  group_by(period) |> 
+  summarize(value = sum(value)) |> 
+  add_column(country = "EA", var = "capital_gdp")
+
+capital_countries <- capital |> 
+  filter(grepl(pattern = "FRA|DEU|ITA|ESP", x = country))
+
+capital_FIN <- bind_rows(capital_countries, capital_EA)
+
+ggplot(data = capital_FIN, mapping = aes(x = period, y = value, color = country)) +
+  geom_line(linewidth = 1.2)+
+  my_theme() +
+  ggtitle("Stock of capital in GDP")
+
+ggsave(filename = "45_capital_shares.png", path = fig_path, height = 12, width = 12)
+graphics.off()
 
 ### The share of crude oil imports in GDP ----
+oil_import_value <- rdb("Eurostat", "nrg_ti_coifpm", mask = "M.TOTAL.VAL_THS_USD.DE+FR+IT+ES+EU_V") |> 
+  select(period, oil_import = value, country = geo) |> 
+  mutate(year = year(period)) |> 
+  group_by(country, year) |> 
+  summarise(oil_import = sum(oil_import)) |> 
+  mutate(period = as.Date(paste0(year, "-01-01"))) |> 
+  select(-year) |> 
+  mutate(
+    country = case_when(
+      country == "EU_V" ~ "EA",
+      TRUE ~ country
+      )
+    )
 
+# in US $
+ea_gdp_usd <- rdb("IMF", "WEOAGG:latest", mask = "998.NGDPD.us_dollars") |> 
+  select(period, gdp = value, country = `weo-countries-group`)
+
+gdp_usd <- rdb("IMF", "WEO:latest", mask = "FRA+DEU+ITA+ESP.NGDPD.us_dollars") |> 
+  select(period, gdp = value, country = `weo-country`) |> 
+  bind_rows(ea_gdp_usd) |> 
+  mutate(country = case_when(
+    country == "FRA" ~ "FR",
+    country == "DEU" ~ "DE",
+    country == "ITA" ~ "IT",
+    country == "ESP" ~ "ES",
+    country == "998" ~ "EA",
+    TRUE ~ country
+    )
+  )
+
+oil <- oil_import_value |> 
+  left_join(y = gdp_usd, by = join_by(country, period)) |> 
+  mutate(
+    period,
+    value = oil_import / (gdp * 1000000),
+    var = "oil_imports_gdp",
+    .keep = "none"
+    )
+
+ggplot(data = oil, mapping = aes(x = period, y = value, color = country)) +
+  geom_line(linewidth = 1.2) +
+  my_theme() +
+  ggtitle("Share of oil imports in GDP")
+
+ggsave(filename = "46_oil_import_shares.png", path = fig_path, height = 12, width = 12)
+graphics.off()
 
 ### The share of petrol in private consumption -----
+petrol_weight <- rdb("Eurostat", "prc_hicp_inw", mask = "A.CP07222.FR+DE+IT+ES+EA") |> 
+  select(value, country = geo, period) |> 
+  mutate(value = value / 1000) |> 
+  rename(petrol_weight = value) |> 
+  filter(year(period) >= 2015)
 
+hhconso <- rdb("Eurostat", "nama_10_gdp", mask = "A.PC_GDP.P31_S14.FR+DE+IT+ES+EA") |> 
+  select(period, conso_gdp = value, country = geo) |> 
+  filter(year(period) >= 2015)
+
+petrol_conso <- hhconso |> 
+  left_join(y = petrol_weight, by = join_by(country, period)) |> 
+  na.omit() |> 
+  mutate(
+    period,
+    country,
+    value = conso_gdp * petrol_weight / 100,
+    var = "petrol_conso",
+    .keep = "none"
+    )
+
+ggplot(data = petrol_conso, mapping = aes(x = period, y = value, color = country)) +
+  geom_line(linewidth = 1.2) +
+  my_theme() +
+  ggtitle("Petrol consumption to GDP ratio")
+
+ggsave(filename = "47_petrol_cons_shares.png", path = fig_path, height = 12, width = 12)
+graphics.off()
 
 ### Share of final consumption in imports ----
+imported_conso <- rdb("Eurostat", "naio_10_cp1700", mask = "A.MIO_EUR.IMP.P3+P51G.TOTAL.DE+FR+IT+ES+EA19") |> 
+  select(period, value, country = geo, var = induse) |> 
+  spread(var, value) |> 
+  mutate(value = P3 / (P3 + P51G)) |> 
+  select(-c("P3", "P51G")) |> 
+  filter(year(period) >= 2010) |> 
+  mutate(
+    country = case_when(
+      country == "EA19" ~ "EA",
+      TRUE ~ country
+      ),
+    var = "imported_conso"
+    )
 
+ggplot(data = imported_conso, mapping = aes(x = period, y = value, color = country)) +
+  geom_line(linewidth = 1.2) +
+  my_theme() +
+  ggtitle("Share of final consumption in total imports")
+
+ggsave(filename = "48_cons_imp_shares.png", path = fig_path, height = 12, width = 12)
+graphics.off()
 
 ### Miscellaneous ----
+ea_gdp <- rdb(ids = "Eurostat/namq_10_gdp/Q.CP_MEUR.SCA.B1GQ.EA19") |> 
+  select(period, gdp = value)
 
+df <- rdb("ECB", "TRD", mask = 'M.I8.Y.M+X.TTT.J8.4.VAL')
+
+ea_trade <- df |> 
+  mutate(
+    period = paste(year(period), quarter(period), sep = "-"),
+    value,
+    var = if_else(condition = grepl(pattern = "Import", x= series_name), true = "imports", false = "exports"),
+    .keep = "none") |> 
+  group_by(var, period) |> 
+  summarize(value = sum(value)) |> 
+  ungroup() |> 
+  mutate(period = yq(period)) |> 
+  spread(var, value) |> 
+  left_join(y = ea_gdp, by = join_by(period)) |> 
+  mutate(
+    period,
+    imports_gdp = imports / (gdp * 1000),
+    exports_gdp = exports / (gdp * 1000),
+    .keep = "none"
+    ) |> 
+  gather(var, value, -period) |> 
+  add_column(country = "EA")
+
+df <- rdb("OECD", "EO", mask = "FRA+DEU+ITA+ESP.XGS+MGS+GDP.A")
+
+imports_exports <- df |> 
+  select(var = VARIABLE, period, value, country = LOCATION) |> 
+  spread(var, value) |> 
+  mutate(
+    period, 
+    country,
+    imports_gdp = MGS / GDP,
+    exports_gdp = XGS / GDP,
+    .keep = "none"
+    ) |> 
+  gather(var, value, -period, -country) |> 
+  mutate(country = case_when(
+    country == "FRA" ~ "FR",
+    country == "DEU" ~ "DE",
+    country == "ITA" ~ "IT",
+    country == "ESP" ~ "ES",
+    TRUE ~ country
+    )
+  ) |> 
+  bind_rows(ea_trade)
+
+alpha_delta_capital <- bind_rows(alpha_FIN, delta_FIN, capital_FIN) |> 
+  mutate(
+    country = case_when(
+      country == "FRA" ~ "FR",
+      country == "DEU" ~ "DE",
+      country == "ITA" ~ "IT",
+      country == "ESP" ~ "ES",
+      TRUE ~ country
+      )
+    )
+
+leverage2 <- leverage |> 
+  mutate(
+    country = case_when(
+      country == "EA19" ~ "EA",
+      TRUE ~ country
+      )
+    )
+
+share <- rdb("Eurostat", "nama_10_gdp", mask = "A.CP_MPPS_EU27_2020.B1GQ.DE+FR+IT+ES+EA19")
+# Original: A.CP_MPPS.B1GQ.DE+FR+IT+ES+EA19
+
+share2 <- share |> 
+  select(value, country = geo, period) |> 
+  spread(country, value) |> 
+  mutate(
+    period,
+    FR = FR / EA19,
+    DE = DE/EA19,
+    IT = IT / EA19,
+    ES = ES / EA19,
+    .keep = "none"
+    ) |> 
+  gather(country, value, -period) |> 
+  mutate(var = "share")
 
 ### Final series for the calibration, and steady state values by country ----
+rawdata <- bind_rows(EA_rawdata_short, FR_rawdata, ES_rawdata, IT_rawdata, DE_rawdata) |> 
+  left_join(y = itrq, by = join_by(country, period)) |> 
+  select(period, country, pubcons, pubinves, tfs, totexp, totrev, intpay, gdp, inves, tauk) |> 
+  filter(period <= max(rawdata_df$period)) |> 
+  gather(var, value, -country, -period) |> 
+  bind_rows(plot_data_df) |> 
+  select(-c("varname", "country_name"))
 
+hours_pc_meanEA <- rawdata |> 
+  filter(var == "hours_pc", country == "EA") |> 
+  summarise(value = mean(value, na.rm = TRUE)) |> 
+  first()
+
+rawdata_growth_ratio <- rawdata |> 
+  spread(var, value) |> 
+  arrange(country) |> 
+  mutate(
+    period,
+    country,
+    defgdp_growth   = defgdp / lag(defgdp, 4) - 1,
+    gdp_rpc_growth  = gdp_rpc / lag(gdp_rpc, 4) - 1,
+    definves_growth = pinves_defl / lag(pinves_defl, 4) - 1,
+    hours_pc_index  = hours_pc / hours_pc_meanEA$value,
+    tfs_gdp         = tfs / (defgdp / 100 * gdp),
+    pubcons_gdp     = pubcons / (defgdp / 100 * gdp),
+    pubinves_gdp    = pubinves / (defgdp / 100 * gdp),
+    totexp_gdp      = totexp / (defgdp / 100 * gdp),
+    otherexp_gdp    = (totexp - tfs - pubcons - pubinves - intpay) / (defgdp / 100 * gdp),
+    intpay_gdp      = intpay / (defgdp / 100 * gdp),
+    totrev_gdp      = totrev / (defgdp / 100 * gdp),
+    inves_gdp       = inves / gdp,
+    shortrate       = re,
+    tauk, taun, tauwh, tauwf, tauc,
+    .keep = "none"
+  ) |> 
+  gather(var, value, -period, -country) |> 
+  bind_rows(
+    alpha_delta_capital,
+    leverage2,
+    imports_exports,
+    imported_conso,
+    share2,
+    oil,
+    petrol_conso
+  ) |> 
+  filter(year(period) >= 1995, year(period) <= 2019) |> 
+  mutate(
+    varname = case_when(
+      var == "alpha"           ~ "Share of capital \n revenue in GDP",
+      var == "defgdp_growth"   ~ "GDP deflator \n growth rate",
+      var == "definves_growth" ~ "Price of investment \n growth rate",
+      var == "delta"           ~ "Depreciation rate \n of the capital stock" ,
+      var == "capital_gdp"     ~ "Capital stock in GDP",
+      var == "exports_gdp"     ~ "Exports-to-GDP ratio" ,
+      var == "gdp_rpc_growth"  ~ "Real GDP per capita \n growth rate" ,
+      var == "hours_pc_index"  ~ "Hours worked per \n capita index",
+      var == "imports_gdp"     ~ "Imports-to-GDP ratio" ,
+      var == "imported_conso"  ~ "Share of final consumption \n in total imports",
+      var == "oil_imports_gdp" ~ "Oil imports to GDP ratio",
+      var == "petrol_conso"    ~ "Petrol consumption \n to GDP ratio ",
+      var == "intpay_gdp"      ~ "Government interest \n payments to GDP ratio",
+      var == "inves_gdp"       ~ "Investment-to-GDP ratio",
+      var == "leverage"        ~ "Leverage of non \n financial corporations",
+      var == "share"           ~ "Share of PPP GDP \n in Euro area PPP GDP",
+      var == "otherexp_gdp"    ~ "Other government \n expenditures to GDP ratio",
+      var == "pubcons_gdp"     ~ "Government consumption \n to GDP ratio",
+      var == "pubinves_gdp"    ~ "Government investment \n to GDP ratio",
+      var == "shortrate"       ~ "Short-term \n interest rate (APR)",
+      var == "taun"            ~ "Implicit Tax Rate \n on labour income " ,
+      var == "tauwh"           ~ "Implicit Tax Rate \n on employees' SSC",
+      var == "tauwf"           ~ "Implicit Tax Rate \n on employers' SSC",
+      var == "tauc"            ~ "Implicit Tax Rate \n on consumption",
+      var == "tauk"            ~ "Implicit Tax Rate \n on corporate income",
+      var == "tfs_gdp"         ~ "Government social \n transfers to GDP ratio",
+      var == "totexp_gdp"      ~ "Total government \n expenditure to GDP ratio",
+      var == "totrev_gdp"      ~ "Total government \n revenue to GDP ratio"
+    ),
+    country = case_when(
+      country == "FR" ~ "France",
+      country == "DE" ~ "Germany",
+      country == "IT" ~ "Italy",
+      country == "ES" ~ "Spain",
+      country == "EA" ~ "Euro Area"
+    )
+  )
+
+# R package `tikz` is not available for this version of R
+# tikz("calibrated.tex", width = 5.2, height = 8.4, sanitize = TRUE)
+
+ggplot(data = rawdata_growth_ratio, mapping = aes(x = period, y = value, color = country)) +
+  geom_line(linewidth = 1.2)+
+  facet_wrap(facets = ~ varname, ncol = 3, scales = "free_y") +
+  my_theme() +
+  ggtitle("Series for the calibration")
+
+ggsave(filename = "49_final.png", path = fig_path, height = 12, width = 12)
+graphics.off()
+
+calibration <- rawdata_growth_ratio |> 
+  mutate(Parameter = varname) |> 
+  group_by(country, Parameter) |> 
+  summarise(mean = round(mean(value, na.rm = TRUE), digits = 3)) |> 
+  ungroup() |> 
+  spread(country, mean)
+
+kable(x = calibration, format = "html", caption = "Calibration") |> 
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"), 
+    position = "center",
+    full_width = FALSE
+    )
+
+# Create a .tex file called "calibration.tex"
+print(
+  xtable::xtable(
+    x = calibration, 
+    caption = c("Calibration"), 
+    type = "latex", 
+    digits = c(0, 0, 3, 3, 3, 3, 3)), 
+  include.rownames = FALSE, 
+  file = "data/calibration.tex"
+  )
 
 # END
