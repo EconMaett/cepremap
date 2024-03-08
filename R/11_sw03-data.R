@@ -1,27 +1,29 @@
-# 10 - Smets and Wouters (2003) database -----
+# 10 - Smets & Wouters (2003) database -----
 # URL: https://macro.cepremap.fr/article/2015-10/sw03-data/
 library(tidyverse)
 library(zoo)
 library(kableExtra)
 library(rdbnomics)
 library(mFilter)
+library(RColorBrewer)
 source("R/utils.R")
 
 fig_path <- "figures/11_sw03-data/"
-# Smets and Wouters (2003) used eight time series:
-#   - GDP
-#   - GDP deflator
-#   - Consumption
-#   - Investment
-#   - Employment
-#   - Wage
-#   - Working-age population
-#   - Interest rate
+palette(brewer.pal(n = 9, name = "Set1"))
+# Smets & Wouters (2003) used eight time series:
+#    1 GDP
+#    2 GDP deflator
+#    3 Consumption
+#    4 Investment
+#    5 Employment
+#    6 Wage
+#    7 Working-age population
+#    8 Interest rate
 
 # We add three more:
-#   - Hours worked
-#   - Consumption deflator
-#   - Investment deflator
+#    9 Hours worked
+#   10 Consumption deflator
+#   11 Investment deflator
 
 # We merge data from:
 #   - The Area-Wide Model (AWM) proposed by Fagan et al. (2001).
@@ -86,8 +88,8 @@ awm <- awm |>
 
 ### First special case: Hours worked ----
 # In 2003 no time series for hours worked existed, so the authors used a formula linking 
-# employment to the hours worked in their model. Today, Eurostat provides a quarterly
-# series starting in 2000 Q1.
+# employment to the hours worked in their model. 
+# Today, Eurostat provides a quarterly series starting in 2000 Q1.
 
 # We build a historical hours worked time series with data from The Conference Board 
 # until 1999 Q4 and then use the data from Eurostat.
@@ -122,13 +124,13 @@ hours_confboard <- readxl::read_excel(
   filter(period >= "1970-07-01" & period <= "2012-07-01")
 
 # Plot the data
-ggplot(data = hours_confboard, mapping = aes(x = period, y = value)) +
-  geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  facet_wrap(facets = ~ country, ncol = 4, scales = "free_y") +
+ggplot(hours_confboard, aes(period, value)) +
+  geom_line(lwd = 1.2, color = blue_obs_macro) +
+  facet_wrap(~ country, ncol = 4, scales = "free_y") +
   my_theme() +
   ggtitle("Hours worked")
 
-ggsave(filename = "01_TED_EA19_hours.png", path = fig_path, height = 12, width = 12)
+ggsave("01_TED_EA19_hours.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 # There are still two problems with such a series:
 #   1. the series does not cover all the 19 member states of the Euro area for the whole period
@@ -168,8 +170,7 @@ hours_confboard_tot <- hours_confboard |>
 hours_confboard_chained <- chain(
   to_rebase  = hours_confboard_14, 
   basis      = hours_confboard_tot, 
-  date_chain = "1990-07-01"
-  )
+  date_chain = "1990-07-01")
 
 #### Convert the annual hours worked series to quarterly data before 2000 -----
 # Once the annual data have been completed since 1970 have been completed,
@@ -184,7 +185,7 @@ hours_confboard_chained_q <- tibble(
     by   = "quarter"),
   value = NA
   ) |> 
-  left_join(y = hours_confboard_chained, by = "period") |> 
+  left_join(hours_confboard_chained, by = join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y)
 
@@ -253,13 +254,13 @@ hours_filtered_levgr <- hours_filtered |>
   filter(period >= "1971-01-01")
 
 # Plot the interpolated levels and QoQ (sequential) growth rates
-ggplot(data = hours_filtered_levgr, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+ggplot(hours_filtered_levgr, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, ncol = 1, scales = "free_y") +
   my_theme() + 
   ggtitle("Hours worked")
 
-ggsave(filename = "02_TED_EA19_hours-approx.png", path = fig_path, height = 12, width = 12)
+ggsave("02_TED_EA19_hours-approx.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # Retain the Kalman filter method of interpolation to avoid the jump each first quarter in the growth rate
@@ -279,8 +280,7 @@ hours_confboard_ind <- hours_confboard_chained |>
     period = period,
     var    = "Annual hours (original, The Conference Board)",
     value  = value / valref,
-    .keep = "none"
-  )
+    .keep = "none")
 
 # Retrieve the quarterly hours worked series from Eurostat
 df <- rdb(ids = "Eurostat/namq_10_a10_e/Q.THS_HW.TOTAL.SCA.EMP_DC.EA19")
@@ -307,23 +307,21 @@ hours_ind <- hours |>
     period = period,
     var    = "Quarterly hours (interpolated)",
     value  = value / valref$value,
-    .keep = "none"
-  )
+    .keep = "none")
 
 # Combine the three indexed series
 check <- bind_rows(
   hours_confboard_ind,
   eurostat_data_ind,
-  hours_ind
-)
+  hours_ind)
 
 # Plot the three time series
-ggplot(data = check, mapping = aes(x = period, y = value, group = var, linetype = var, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(check, aes(period, value, group = var, linetype = var, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Comparison of hours worked series")
 
-ggsave(filename = "03_TED_EA19_hours-comparison.png", path = fig_path, height = 12, width = 12)
+ggsave("03_TED_EA19_hours-comparison.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Second special case: Population ----
@@ -340,7 +338,7 @@ EA19_code <- c(
 )
 
 url_country <- paste0("A.NR.Y15-64.T.", paste0(EA19_code, collapse = "+"))
-df <- rdb(provider_code = "Eurostat", dataset_code = "demo_pjanbroad", mask = url_country)
+df <- rdb("Eurostat", "demo_pjanbroad", mask = url_country)
 
 pop_eurostat_bycountry <- df |>
   as_tibble() |> 
@@ -350,13 +348,13 @@ pop_eurostat_bycountry <- df |>
 
 pop_eurostat_bycountry |> 
   mutate(value = value / 1e6) |> 
-  ggplot(mapping = aes(x = period, y = value)) +
-  geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  facet_wrap(facets = ~ country, ncol = 4, scales = "free_y") +
+  ggplot(mapping = aes(period, value)) +
+  geom_line(lwd = 1.2, color = blue_obs_macro) +
+  facet_wrap(~ country, ncol = 4, scales = "free_y") +
   my_theme() +
   ggtitle("Working-age population (in millions)")
 
-ggsave(filename = "04_Eurostat_population.png", path = fig_path, height = 12, width = 12)
+ggsave("04_Eurostat_population.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 # There are still two problems with this time series:
 #   1) the series does not cover all 19 Euro area member countries for the whole period
@@ -392,8 +390,7 @@ pop_a_tot <- pop_eurostat_bycountry |>
 pop_chained <- chain(
   to_rebase  = pop_a_16, 
   basis      = pop_a_tot, 
-  date_chain = "1982-01-01"
-  )
+  date_chain = "1982-01-01")
 
 #### Convert the annual population series to quarterly data before 2000 ----
 # Once the annual data have been completed since 197',
@@ -406,7 +403,7 @@ pop_chained_q <- tibble(
     ),
   value = NA
   ) |> 
-  left_join(y = pop_chained, by = "period") |> 
+  left_join(pop_chained, by = "period") |> 
   select(-value.x) |> 
   rename(value = value.y)
 
@@ -439,13 +436,13 @@ pop_filtered_levgr <- pop_filtered |>
   filter(period >= "1970-04-01")
 
 # Plot the three filtering methods
-ggplot(data = pop_filtered_levgr, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+ggplot(pop_filtered_levgr, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, ncol = 1, scales = "free_y") +
   my_theme() +
   ggtitle("Population")
 
-ggsave(filename = "05_Eurostat_population-approx.png", path = fig_path, height = 12, width = 12)
+ggsave("05_Eurostat_population-approx.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # Retain the Kalman filter method of interpolation to avoid the jump each first quarter 
@@ -469,8 +466,7 @@ pop_a_ind <- pop_chained |>
   mutate(
     period = period,
     var    = "Annual population (original, Eurostat)",
-    value  = value / valref
-  )
+    value  = value / valref)
 
 # URL for quarterly population series from Eurostat
 df <- rdb(ids = "Eurostat/lfsq_pganws/Q.THS_PER.T.TOTAL.Y15-64.POP.EA20")
@@ -499,19 +495,18 @@ pop_ind <- pop |>
     period = period,
     var    = "Quarterly population (interpolated)",
     value  = value / valref$value,
-    .keep = "none"
-  )
+    .keep = "none")
 
 # Combine the data
 check <- bind_rows(pop_a_ind, eurostat_data_ind, pop_ind)
 
 # Plot the data
-ggplot(data = check, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(check, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Population")
 
-ggsave(filename = "06_Eurostat_population-comparison.png", path = fig_path, height = 12, width = 12)
+ggsave("06_Eurostat_population-comparison.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Recent data (since the end of the 1990s) ----
@@ -527,14 +522,14 @@ url_var  <- paste0(variable_list, collapse = "+")
 url_meas <- paste0(measure_list, collapse = "+")
 
 url_filter <- paste0("Q.", url_meas, ".SCA.", url_var, ".EA19")
-df <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_gdp", mask = url_filter)
+df <- rdb("Eurostat", "namq_10_gdp", mask = url_filter)
 
 d1 <- df |> 
   select(period, value, unit, na_item, series_name) |> 
   rename(var = na_item) |> 
   mutate(
     var = if_else(
-      condition = var=="B1GQ" & unit == "CLV10_MEUR",
+      condition = var =="B1GQ" & unit == "CLV10_MEUR",
       true = "gdp",
       false = if_else(
         condition = var == "B1GQ",
@@ -569,7 +564,7 @@ d2 <- df |>
 url_meas   <- "THS_HW+THS_PER"
 url_filter <- paste0("Q.", url_meas, ".TOTAL.SCA.EMP_DC.EA19")
 
-df <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_a10_e", mask = url_filter)
+df <- rdb("Eurostat", "namq_10_a10_e", mask = url_filter)
 
 d3 <- df |> 
   select(period, unit, value, series_name) |> 
@@ -640,8 +635,7 @@ old_df <- awm |>
 df1 <- chain(
   basis      = new_df,
   to_rebase  = old_df,
-  date_chain = "1999-01-01"
-  )
+  date_chain = "1999-01-01")
 
 ### Population special case ----
 # Note: Apparently data frames and tibbles can store time series `ts` objects now
@@ -662,34 +656,30 @@ pop <- pop_StructTS |>
 pop <- chain(
   basis = recent_pop_q,
   to_rebase = pop,
-  date_chain = min_date_pop_q
-  )
+  date_chain = min_date_pop_q)
 
 plot_pop <- pop |> 
   mutate(value = log(value) - log(lag(value))) |> 
   data.frame(ind2 = "Growth rates") |> 
   filter(period >= "1970-04-01")
 
-ggplot(data = plot_pop, mapping = aes(x = period, y = value, colour = var)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+ggplot(plot_pop, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, ncol = 1, scales = "free_y") +
   my_theme() +
   ggtitle("Quarterly Population")
 
-ggsave(filename = "07_Eurostat_population-growthrates.png", path = fig_path, height = 12, width = 12)
+ggsave("07_Eurostat_population-growthrates.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # The last years of the series exhibit high levels of volatility
-# because they were not interpolated with he Kalman filter,
+# because they were not interpolated with the Kalman filter,
 # and thus we apply the Hodrick-Prescott (HP) filter to the series.
 popts <- ts(data = pop$value, start = c(1970, 1), frequency = 4)
 smoothed_popts <- hpfilter(popts, freq = 1600)$trend
 
 pop_StructTS <- pop |> 
-  mutate(
-    value = as.numeric(smoothed_popts),
-    var   = "Smoothed population"
-  )
+  mutate(value = as.numeric(smoothed_popts), var = "Smoothed population")
 
 plot_pop <- pop |> 
   mutate(var = "Original population")
@@ -702,13 +692,13 @@ pop_filtered_levgr <- pop_filtered |>
   bind_rows(tibble(pop_filtered, ind2 = "1- Levels")) |> 
   filter(period >= "1970-04-01")
 
-ggplot(data = pop_filtered_levgr, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+ggplot(pop_filtered_levgr, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, ncol = 1, scales = "free_y") +
   my_theme() +
   ggtitle("Population")
 
-ggsave(filename = "08_Eurostat_population-smoothed.png", path = fig_path, height = 12, width = 12)
+ggsave("08_Eurostat_population-smoothed.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # We retain the smoothed series obtained from the Hodrick-Prescott filter.
@@ -736,12 +726,12 @@ list_var <- list(
 plot_df$var <- factor(plot_df$var)
 levels(plot_df$var) <- list_var
 
-ggplot(data = plot_df, mapping = aes(x = period, y = value)) +
-  geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  facet_wrap(facets = ~ var, scales = "free_y", ncol = 3) +
+ggplot(plot_df, aes(period, value)) +
+  geom_line(lwd = 1.2, color = blue_obs_macro) +
+  facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme()
   
-ggsave(filename = "09_final-database.png", path = fig_path, height = 12, width = 12)
+ggsave("09_final-database.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # You can download the 11 series directly here: shiny.cepremap.fr/data/EA_SW_rawdata.csv
@@ -752,7 +742,7 @@ write.csv(EA_SW_rawdata, file = "data/EA_SW_rawdata.csv", row.names = FALSE)
 
 # You can also download ready-to-use (normalized) data: shiny.cepremap.fr/data/EA_SW_data.csv
 EA_SW_data <- final_df |> 
-  mutate(period = gsub(pattern = " ", replacement = "", x = zoo::as.yearqtr(period))) |> 
+  mutate(period = gsub(" ", "", zoo::as.yearqtr(period))) |> 
   pivot_wider(names_from = var, values_from = value) |> 
   mutate(
     period      = period,
@@ -769,6 +759,5 @@ EA_SW_data <- final_df |>
     .keep = "none"
   )
 
-write.csv(x = EA_SW_data, file = "data/EA_SW_data.csv", row.names = FALSE)
-
+write.csv(EA_SW_data, file = "data/EA_SW_data.csv", row.names = FALSE)
 # END
