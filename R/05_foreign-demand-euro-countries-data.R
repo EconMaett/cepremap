@@ -1,6 +1,5 @@
 # 05 - Foreign Demand for FR, DE, IT and ES ----
 # URL: https://macro.cepremap.fr/article/2020-02/foreign-demand-euro-countries-data/
-
 # Quarterly foreign demand for France, Germany, Italy and Spain.
 # For each country, we proceed in three steps:
 #   1 Calculate the growth of imports in volume of main trading partners;
@@ -120,6 +119,7 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
     label = "Growth rates of imports of goods and services", 
     subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)"
     )
+
 ggsave("02_imports_gr.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
@@ -134,7 +134,6 @@ kable(min_time, format = "html", caption = "min_time") |>
 
 ### French exports of goods to main commercial partners ----
 # (Values in US Dollars, annual)
-
 # To compute the relative importance of each trading partner, 
 # we use data series of values of exports of goods (Free on board, in US dollars), 
 # from DOT database (IMF), for France towards each country.
@@ -245,7 +244,8 @@ alphas_importer_14 <- left_join(
 alphas <- bind_rows(
   filter(alphas_importer_14, year(period) < 1999),
   filter(alphas_importer_all, year(period) >= 1999)
-  )
+  ) |> 
+  mutate(country = gsub(", Millions", "", country))
 
 ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
@@ -286,21 +286,12 @@ wd_index2010 <- wd |>
   ungroup()
 
 wd_index <- wd |>
-  mutate(
-    period,
-    value = 100 * value / wd_index2010$value
-  )
+  mutate(period, value = 100 * value / wd_index2010$value)
 
 wd_index_growth <- wd_index |>
-  mutate(
-    value = value / lag(value, 4) - 1,
-    var = "2- Growth rate"
-  )
+  mutate(value = value / lag(value, 4) - 1, var = "2- Growth rate")
 
-plot_wd_FR <- bind_rows(
-  wd_index_growth,
-  mutate(wd_index, var = "1- Level")
-  ) |>
+plot_wd_FR <- bind_rows(wd_index_growth, mutate(wd_index, var = "1- Level")) |>
   add_column(country = "France")
 
 ## Germany ----
@@ -515,7 +506,8 @@ alphas_importer_12 <- left_join(
 alphas <- bind_rows(
   filter(alphas_importer_12, year(period) < 1999),
   filter(alphas_importer_all, year(period) >= 1999)
-  )
+  ) |> 
+  mutate(country = gsub(", Millions", "", country))
 
 ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
@@ -808,7 +800,8 @@ alphas_importer_15 <- left_join(
 alphas <- bind_rows(
   filter(alphas_importer_15, year(period) < 1999),
   filter(alphas_importer_all, year(period) >= 1999)
-  )
+  )|> 
+  mutate(country = gsub(", Millions", "", country))
 
 ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
@@ -902,7 +895,7 @@ ggplot(imports, aes(period, value)) +
   my_theme() +
   ggtitle("Imports of goods and services", subtitle = "(volume, seasonally adjusted, national currency)")
 
-ggsave("12_imports_ES_levels.png", path = fig_path, height = 12, width = 12)
+ggsave("13_imports_ES_levels.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Special case: Algeria, China, Morocco, Saudi Arabia ----
@@ -967,7 +960,7 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
   my_theme() +
   ggtitle("Growth rates of imports of goods and services", subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)")
 
-ggsave("13_imports_ES_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("14_imports_ES_gr.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 min_time <- imports_growth_rate |>
@@ -1038,7 +1031,7 @@ ggplot(plot_export2, aes(period, value2, color = var)) +
   my_theme() +
   ggtitle("Growth rate of exports, with 14 and 18 partners")
 
-ggsave("14_exports_ES_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("15_exports_ES_gr.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 # Before 1999, both series are very similar. So we choose to compute weights of 18 commercial partners after 1997 but of only 14 partners before 1997 (without Belgium, Brazil, China and Poland).
 
@@ -1085,7 +1078,8 @@ alphas_importer_14 <- left_join(
 alphas <- bind_rows(
   filter(alphas_importer_14, year(period) < 1997),
   filter(alphas_importer_all, year(period) >= 1997)
-  )
+  )|> 
+  mutate(country = gsub(", Millions", "", country))
 
 ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
@@ -1093,7 +1087,7 @@ ggplot(alphas, aes(period, alpha)) +
   my_theme() +
   ggtitle("Relative importance of each trading partner in Spanish exports")
 
-ggsave("15_importance_ES.png", path = fig_path, height = 12, width = 12)
+ggsave("16_importance_ES.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Final index ----
@@ -1157,8 +1151,13 @@ ggplot(foreign_demand, aes(period, value, color = country)) +
   my_theme() +
   ggtitle(expression(atop("Foreign demand for France, Germany, Italy and Spain", atop(italic("base 100 = 2010"), ""))))
 
-ggsave("16_.png", path = fig_path, height = 12, width = 12)
+ggsave("17_foreign-demand.png", path = fig_path, height = 12, width = 12)
 graphics.off()
+
+world_demand <- foreign_demand |> 
+  filter(var == "1- Level") |> 
+  select(period, value, country) |> 
+  add_column(var = "world_demand")
 
 write.csv(world_demand, file = "data/Foreign_demand.csv", row.names = FALSE)
 # Find the data here: href="http://shiny.cepremap.fr/data/Foreign_demand.csv
