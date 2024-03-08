@@ -6,35 +6,37 @@ library(kableExtra)
 library(rdbnomics)
 library(seasonal)
 library(gridExtra)
-source(file = "R/utils.R")
+library(RColorBrewer)
+source("R/utils.R")
+palette(brewer.pal(n = 9, name = "Set1"))
 fig_path <- "figures/07_EA_Fipu_data/"
 # Build the database following Paredes et al. (2014).
 # The following series are included:
-#   - Direct taxes
-#   - Indirect taxes
-#   - Social security contributions by employees
-#   - Social security contributions by employers
-#   - Government consumption
-#   - Government investments
-#   - Government transfers
-#   - Government subsidies
-#   - Government compensation of employees
-#   - Unemployment benefits
-#   - Government debt
-#   - Interest payments
-#   - Total revenues
-#   - Total expenditures.
+#    1 Direct taxes
+#    2 Indirect taxes
+#    3 Social security contributions by employees
+#    4 Social security contributions by employers
+#    5 Government consumption
+#    6 Government investments
+#    7 Government transfers
+#    8 Government subsidies
+#    9 Government compensation of employees
+#   10 Unemployment benefits
+#   11 Government debt
+#   12 Interest payments
+#   13 Total revenues
+#   14 Total expenditures.
 
 ## Historical data ----
-# We begin by replicating the series proposed in Paredes et al. (2014).
-# The social contribution by contributors starts in 1991.
+# Replicate the series proposed in Paredes et al. (2014).
+#  Social contribution by contributors starts in 1991.
 # https://macro.cepremap.fr/article/2019-11/fipu-EA-data/#ppp14
 ppp <- readxl::read_excel(path = "data/PPP_raw.xls", sheet = 1, skip = 1)
 
 ppp <- ppp |> 
   # mutate(across(.cols = SCR:SCE, .fns = ~ gsub(pattern = "-", replacement = NA, x = .x))) |> 
   mutate(
-    period   = as.Date(as.yearqtr(`MILL. EURO, RAW DATA, NON-SEAS. ADJUSTED, SMOOTHED ESTIMATES`, format = "%YQ%q")),
+    period = as.Date(as.yearqtr(`MILL. EURO, RAW DATA, NON-SEAS. ADJUSTED, SMOOTHED ESTIMATES`, "%YQ%q")),
     totexp   = TOE,             # Total expenditures
     pubcons  = GCN,             # General government consumption expenditures
     pubinves = GIN,             # General government investment
@@ -58,7 +60,7 @@ ppp <- ppp |>
 # remains stable before 1991 to reconstruct the series before that time.
 # Calculate the ratio of social contributions for the first data point
 prcnt <- ppp |> 
-  mutate(scr_sct = scr/sct, .keep = "none") |> 
+  mutate(scr_sct = scr / sct, .keep = "none") |> 
   na.omit() |> 
   first() |> 
   as.numeric()
@@ -110,10 +112,7 @@ data_1 <- df |>
   as_tibble() |> 
   select(period, var = na_item, value) |> 
   pivot_wider(names_from = var, values_from = value) |> 
-  mutate(
-    sce = D613 + D612,
-    scr = D611
-  ) |> 
+  mutate(sce = D613 + D612, scr = D611) |> 
   select(-c("D611", "D612", "D613")) |> 
   pivot_longer(cols = -period, names_to = "var", values_to = "value") |> 
   mutate(year = year(period))
@@ -126,7 +125,7 @@ data_1 <- df |>
 
 #### From annual to quarterly data ----
 # Quarterly net social contributions, receivable (D61REC) for general govt only (S13)
-df <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D61REC.EA19")
+df <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D61REC.EA19")
 
 qsct <- df |> 
   mutate(period, var = "sct", value, .keep = "none") |> 
@@ -148,12 +147,12 @@ qsct_a <- qsct |>
   summarise(value_a = sum(value))
 
 qsct <- qsct |> 
-  left_join(x = qsct_a, by = join_by(year))
+  left_join(qsct_a, by = join_by(year))
 
 # Convert the data from annual to quarterly
 qsce_uncomplete <- data_1 |> 
   filter(var == "sce") |> 
-  full_join(y = qsct, by = join_by(year)) |> 
+  full_join(qsct, by = join_by(year)) |> 
   mutate(
     period = period.y,
     var    = var.x,
@@ -165,7 +164,7 @@ qsce_uncomplete <- data_1 |>
 # Convert data from annual to quarterly
 qscr_uncomplete <- data_1 |> 
   filter(var == "scr") |> 
-  full_join(y = qsct, by = join_by(year)) |> 
+  full_join(qsct, by = join_by(year)) |> 
   mutate(
     period = period.y,
     var    = var.x,
@@ -180,7 +179,7 @@ plot_treatment <- bind_rows(qscr_uncomplete, qsce_uncomplete) |>
     Origin = "Deduced quarterly series",
     value = 4 * value # To compare quarterly and annual levels
   ) |> 
-  bind_rows(mutate(.data = data_1, Origin = "Original annual series")) |> 
+  bind_rows(mutate(data_1, Origin = "Original annual series")) |> 
   mutate(
     var = if_else(
       condition = var == "sce", 
@@ -190,12 +189,12 @@ plot_treatment <- bind_rows(qscr_uncomplete, qsce_uncomplete) |>
   ) |> 
   select(-year)
 
-ggplot(data = plot_treatment, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ var, ncol = 2, scales = "free_y") +
+ggplot(plot_treatment, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ var, ncol = 2, scales = "free_y") +
   my_theme()
 
-ggsave(filename = "01_SCR-SCT.png", path = fig_path, height = 12, width = 12)
+ggsave("01_SCR-SCT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Most recent data ----
@@ -204,7 +203,7 @@ graphics.off()
 # deduce the latest contributions of households and employers
 
 # Quarterly employers SSC for total economy
-df <- rdb(provider_code = "Eurostat", dataset_code = "namq_10_gdp", mask = "Q.CP_MEUR.NSA.D12.EA19")
+df <- rdb("Eurostat", "namq_10_gdp", mask = "Q.CP_MEUR.NSA.D12.EA19")
 
 qscr_toteco <- df |> 
   as_tibble() |> 
@@ -223,7 +222,7 @@ qscr <- chain(
 
 # Assume the ratio of social contributions by the contributors remains
 # constant over time to deduce the social contributions of households
-qsce <- bind_rows(qsce_uncomplete, select(.data = qsct, period, value, var), qscr) |> 
+qsce <- bind_rows(qsce_uncomplete, select(qsct, period, value, var), qscr) |> 
   filter(period <= max_time$max_date) |> 
   pivot_wider(names_from = var, values_from = value, values_fill = 0) |> 
   mutate(
@@ -249,8 +248,8 @@ qsce <- bind_rows(qsce_uncomplete, select(.data = qsct, period, value, var), qsc
 plot_treatment <- bind_rows(qscr_uncomplete, qsce_uncomplete) |> 
   mutate(Origin = "Quarterly series") |> 
   bind_rows(
-    mutate(.data = qscr_toteco, Origin = "Original quarterly series (for total economy)"),
-    mutate(.data = bind_rows(qsce, qscr), Origin = "Chained series")
+    mutate(qscr_toteco, Origin = "Original quarterly series (for total economy)"),
+    mutate(bind_rows(qsce, qscr), Origin = "Chained series")
     ) |> 
   mutate(
     var = if_else(
@@ -261,18 +260,18 @@ plot_treatment <- bind_rows(qscr_uncomplete, qsce_uncomplete) |>
   ) |> 
   select(-year)
 
-ggplot(data = plot_treatment, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ var, ncol = 2, scales = "free_y") +
+ggplot(plot_treatment, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ var, ncol = 2, scales = "free_y") +
   my_theme() +
   ggtitle("Social contribution forward chaining")
 
-ggsave(filename = "02_SC-chain.png", path = fig_path, height = 12, width = 12)
+ggsave("02_SC-chain.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Special case: Unemployment benefits ----
 # Retrieve government social expenditures and compute their quarterly share for every year.
-socialexp <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D62PAY.EA19") |> 
+socialexp <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.NSA.S13.D62PAY.EA19") |> 
   as_tibble() |> 
   mutate(year = year(period)) |> 
   select(period, value, year) |> 
@@ -285,7 +284,7 @@ socialexp <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mas
 # put them in a quarterly table and use the previous ratio
 # of quarterly social expenditures to compute the quarterly 
 # unemployment benefits
-df <- rdb(provider_code = "Eurostat", dataset_code = "gov_10a_exp", mask = "A.MIO_EUR.S13.GF1005.TE.EA19")
+df <- rdb("Eurostat", "gov_10a_exp", mask = "A.MIO_EUR.S13.GF1005.TE.EA19")
 
 recent_unemp <- df |> 
   as_tibble() |> 
@@ -296,7 +295,7 @@ recent_unemp_q <- tibble(
   period = seq(from = min(recent_unemp$period), length.out = nrow(recent_unemp) * 4, by = "quarter"),
   year   = year(period)
   ) |> 
-  left_join(y = recent_unemp, by = join_by(year)) |> 
+  left_join(recent_unemp, by = join_by(year)) |> 
   select(-c("period.y", "year")) |> 
   rename(period = period.x)
 
@@ -312,15 +311,15 @@ unemp_q <- recent_unemp_q |>
 data_plot <- ppp |> 
   filter(var == "unemp") |> 
   mutate(var = "From PPP") |> 
-  bind_rows(mutate(.data = unemp_q, var = "New measure")) |> 
+  bind_rows(mutate(unemp_q, var = "New measure")) |> 
   filter(year(period) >= 2007)
 
-ggplot(data = data_plot, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
+ggplot(data_plot, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Unemployment benefits series comparison")
 
-ggsave(filename = "03_unemp-comp.png", path = fig_path, height = 12, width = 12)
+ggsave("03_unemp-comp.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Chaining recent data with historical ----
@@ -344,10 +343,10 @@ var_taken <- c(
 # Build the URL, fetch the data and convert it to a tibble
 url_variables <- paste0(var_taken, collapse = "+")
 url_filter    <- paste0("Q.MIO_EUR.NSA.S13.", url_variables, ".EA19")
-data_1        <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggnfa", mask = url_filter)
+data_1        <- rdb("Eurostat", "gov_10q_ggnfa", mask = url_filter)
 
 # Government consolidated gross debt is in a different dataset
-data_2 <- rdb(provider_code = "Eurostat", dataset_code = "gov_10q_ggdebt", mask = "Q.GD.S13.MIO_EUR.EA19")
+data_2 <- rdb("Eurostat", "gov_10q_ggdebt", mask = "Q.GD.S13.MIO_EUR.EA19")
 
 # Bind the two data frames
 recent_data <- bind_rows(data_1, data_2) |> 
@@ -356,7 +355,7 @@ recent_data <- bind_rows(data_1, data_2) |>
 # Harmonize the DBnomic series variable names with PPP
 var_names <- c("pubcons", "pubinves", "tfs", "salaries", "subs", "indirtax", "dirtax", "intpay", "totexp", "totrev", "debt")
 
-recent_data$var <- plyr::mapvalues(x = recent_data$var, from = c(var_taken, "GD"), to = var_names)
+recent_data$var <- plyr::mapvalues(recent_data$var, from = c(var_taken, "GD"), to = var_names)
 
 # Include the series of social contributions
 var_names <- c(var_names, "sce", "scr", "unemp")
@@ -383,7 +382,7 @@ kable(max_date)
 chained_data <- recent_data %>%
   chain(
     basis      = ., # Necessitates use of tidyverse pipe 
-    to_rebase  = filter(.data = ppp, var %in% var_names), 
+    to_rebase  = filter(ppp, var %in% var_names), 
     date_chain = "2007-01-01"
     ) %>%
   arrange(var, period) %>%
@@ -415,30 +414,30 @@ plot_totrev <- to_plot |>
   filter(var == "totrev", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "totrev", Origin != "Final series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "totrev", Origin != "Final series"), ind2 = "1 - Chain series")
   )
 
 plot_totexp <- to_plot |> 
   filter(var == "totexp", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "totexp", Origin != "Final series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "totexp", Origin != "Final series"), ind2 = "1 - Chain series")
   )
 
-p1 <- ggplot(data = plot_totrev, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p1 <- ggplot(plot_totrev, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Total revenue")
 
-p2 <- ggplot(data = plot_totexp, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p2 <- ggplot(plot_totexp, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Total expenditures")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "04_revenue-expenditures.png", path = fig_path, height = 12, width = 12)
+ggsave("04_revenue-expenditures.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Public direct spending ----
@@ -451,30 +450,30 @@ plot_cons <- to_plot |>
   filter(var == "pubcons", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "pubcons", Origin != "Final series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "pubcons", Origin != "Final series"), ind2 = "1 - Chain series")
   )
 
 plot_inves <- to_plot |> 
   filter(var == "pubinves", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "pubinves", Origin != "Final series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "pubinves", Origin != "Final series"), ind2 = "1 - Chain series")
   )
 
-p1 <- ggplot(data = plot_cons, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p1 <- ggplot(plot_cons, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Public consumption")
 
-p2 <- ggplot(data = plot_inves, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p2 <- ggplot(plot_inves, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Public investment")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "05_consumption-investment.png", path = fig_path, height = 12, width = 12)
+ggsave("05_consumption-investment.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Specific spending ----
@@ -484,30 +483,30 @@ plot_salaries <- to_plot |>
   filter(var == "salaries", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "salaries", Origin != "Final series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "salaries", Origin != "Final series"), ind2 = "1 - Chain series")
   )
 
 plot_subs <- to_plot |> 
   filter(var == "subs", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "subs", Origin != "Final series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "subs", Origin != "Final series"), ind2 = "1 - Chain series")
   )
 
-p1 <- ggplot(data = plot_salaries, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p1 <- ggplot(plot_salaries, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Compensation of employees")
 
-p2 <- ggplot(data = plot_subs, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p2 <- ggplot(plot_subs, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Subsidies")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "06_compensation-subsidies.png", path = fig_path, height = 12, width = 12)
+ggsave("06_compensation-subsidies.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Taxes ----
@@ -516,30 +515,30 @@ plot_indir <- to_plot |>
   filter(var == "indirtax", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "indirtax", Origin != "Final series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "indirtax", Origin != "Final series"), ind2 = "1 - Chain series")
   )
 
 plot_dir <- to_plot |> 
   filter(var == "dirtax", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "dirtax", Origin != "Fianl series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "dirtax", Origin != "Fianl series"), ind2 = "1 - Chain series")
   )
 
-p1 <- ggplot(data = plot_indir, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p1 <- ggplot(plot_indir, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Indirect taxation")
 
-p2 <- ggplot(data = plot_dir, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p2 <- ggplot(plot_dir, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Direct taxation")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "07_indirect-direct-taxation.png", path = fig_path, height = 12, width = 12)
+ggsave("07_indirect-direct-taxation.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Debt and interest payments ----
@@ -549,30 +548,30 @@ plot_debt <- to_plot |>
   filter(var == "debt", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "debt", Origin != "Final series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "debt", Origin != "Final series"), ind2 = "1 - Chain series")
   )
 
 plot_intpay <- to_plot |> 
   filter(var == "intpay", Origin != "Historical data") |> 
   mutate(ind2 = "2 - Remove seasonal component") |> 
   bind_rows(
-    tibble(filter(.data = to_plot, var == "intpay", Origin != "Final series"), ind2 = "1 - Chain series")
+    tibble(filter(to_plot, var == "intpay", Origin != "Final series"), ind2 = "1 - Chain series")
   )
 
-p1 <- ggplot(data = plot_intpay, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p1 <- ggplot(plot_intpay, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Interest payments")
 
-p2 <- ggplot(data = plot_debt, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p2 <- ggplot(plot_debt, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("General government debt")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "08_interest-debt.png", path = fig_path, height = 12, width = 12)
+ggsave("08_interest-debt.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Total social transfers and unemployment benefits ----
@@ -586,20 +585,20 @@ plot_transf <- to_plot |>
   mutate(ind2 = "2 - Remove seasonal component") |>
   bind_rows(tibble(filter(to_plot, var == "tfs", Origin != "Final series"), ind2 = "1 - Chain series"))
 
-p1 <- ggplot(data = plot_transf, mapping = aes(x = period, y = value, colour = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p1 <- ggplot(plot_transf, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Social transfers")
 
-p2 <- ggplot(data = plot_unemp, mapping = aes(x = period, y = value, colour = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ ind2, scales = "free_y", ncol = 1) +
+p2 <- ggplot(plot_unemp, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle("Unemployment benefits")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave(filename = "09_transfers-benefits.png", path = fig_path, height = 12, width = 12)
+ggsave("09_transfers-benefits.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Building the final database ----
@@ -653,15 +652,15 @@ xlab_plot <- c(
   "Unemployment benefits"
 )
 
-plot_compare$var <- plyr::mapvalues(x = plot_compare$var, from = levels(plot_compare$var), to = xlab_plot)
+plot_compare$var <- plyr::mapvalues(plot_compare$var, from = levels(plot_compare$var), to = xlab_plot)
 
-ggplot(data = plot_compare, mapping = aes(x = period, y = value, color = Origin)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ var, ncol = 3, scales = "free_y") +
+ggplot(plot_compare, aes(period, value, color = Origin)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme() +
   ggtitle("Fiscal database for the Euro Area")
 
-ggsave(filename = "10_final.png", path = fig_path, height = 12, width = 12)
+ggsave("10_final.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### Final fiscal database for the Euro area ----
@@ -671,7 +670,7 @@ EA_Fipu_rawdata <- deseasoned |>
   pivot_wider(names_from = var, values_from = value)
 
 EA_Fipu_rawdata |> 
-  write.csv(file = "data/EA_Fipu_rawdata.csv", row.names = FALSE)
+  write.csv("data/EA_Fipu_rawdata.csv", row.names = FALSE)
 
 # Then we normalize the data by population and price 
 # to reproduce the Smets and Wouters (2003) data base
@@ -698,7 +697,7 @@ EA_Fipu_data <- EA_Fipu_rawdata |>
   )
 
 EA_Fipu_data |> 
-  write.csv(file = "data/EA_Fipu_data.csv", row.names = FALSE)
+  write.csv("data/EA_Fipu_data.csv", row.names = FALSE)
 
 # Find the normalized data here: http://shiny.cepremap.fr/data/EA_Fipu_data.csv
 # END

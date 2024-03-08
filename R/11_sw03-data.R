@@ -7,9 +7,8 @@ library(rdbnomics)
 library(mFilter)
 library(RColorBrewer)
 source("R/utils.R")
-
-fig_path <- "figures/11_sw03-data/"
 palette(brewer.pal(n = 9, name = "Set1"))
+fig_path <- "figures/11_sw03-data/"
 # Smets & Wouters (2003) used eight time series:
 #    1 GDP
 #    2 GDP deflator
@@ -146,15 +145,14 @@ hours_confboard |>
 # At the time of writing, the hours worked for five Central European countries, 
 # Estonia, Latvia, Lithuania, Slovak Republic, Slovenia are missing between 1970 and 1990.
 
-# Use growth rates of the sum of hours worked series for the 14 countries 
-# available before 1990 to complete the series of the sum of hours worked over the 
-# 19 countries after 1990.
+# Use growth rates of the sum of hours worked series for the 14 countries available before 1990 
+# to complete the series of the sum of hours worked over the 19 countries after 1990.
 
 # This is appropriate since in 1990 the 14 economies of the Euro area 
 # represented more than 95% of the total hours worked.
 
 # sum over the 14 countries
-EA14_names <- c(filter(.data = hours_confboard, period == "1970-07-01" & !is.na(value))$country)
+EA14_names <- c(filter(hours_confboard, period == "1970-07-01" & !is.na(value))$country)
 
 hours_confboard_14 <- hours_confboard |>
   filter(country %in% EA14_names) |> 
@@ -185,7 +183,7 @@ hours_confboard_chained_q <- tibble(
     by   = "quarter"),
   value = NA
   ) |> 
-  left_join(hours_confboard_chained, by = join_by(period)) |> 
+  left_join(hours_confboard_chained, join_by(period)) |> 
   select(-value.x) |> 
   rename(value = value.y)
 
@@ -217,8 +215,7 @@ smooth_ts <- tsSmooth(object = struct_ts)
 # We want the "level" only
 smoothed_hoursts <- tsSmooth(object = StructTS(hoursts, type = "trend"))[, 1]
 
-# help("StructTS")
-# Fit structural model for a time series by maximum likelihood.
+# help("StructTS") # Fit structural model for a time series by maximum likelihood.
 
 # Structural time series models are also called linear Gaussian state-space models for univariate
 # time series based on a decomposition into different components.
@@ -228,8 +225,7 @@ smoothed_hoursts <- tsSmooth(object = StructTS(hoursts, type = "trend"))[, 1]
 # The *local linear trend model*, type = "trend" has the same measurement equation, 
 # but with a time-varying slope
 
-# help("tsSmooth")
-# Performs fixed-interval smoothing on a univariate time series via a state-space model.
+# help("tsSmooth") # Performs fixed-interval smoothing on a univariate time series via a state-space model.
 # It gives the best estimate of the state at each time period point based on the whole observed series.
 
 # Note that the `stats` R package also comes with the functions
@@ -273,7 +269,7 @@ hours <- hours_StructTS |>
 # is consistent with the raw data available in the most recent period.
 
 # Convert The Conference Board TED annual hours worked series into 2000 basis index.
-valref <- filter(.data = hours_confboard_chained, period == "2000-07-01")$value
+valref <- filter(hours_confboard_chained, period == "2000-07-01")$value
 
 hours_confboard_ind <- hours_confboard_chained |> 
   mutate(
@@ -296,7 +292,7 @@ valref <- eurostat_data |>
 eurostat_data_ind <- eurostat_data |> 
   mutate(value = value / valref$value)
 
-# convert the quarterly hours worked series interpolated
+# Convert the quarterly hours worked series interpolated
 # from annual values using the Kalman filter into 2000 basis index
 valref <- hours |>
   filter(year(period) == 2000) |> 
@@ -332,10 +328,8 @@ graphics.off()
 # and then add the original Euro area quarterly population series from Eurostat.
 
 # Build URLs to the DBnomcis API to retrieve annual population series for the 19 Euro Area countries.
-EA19_code <- c(
-  "AT", "BE", "CY", "DE_TOT", "EE", "IE", "EL", "ES", "FX", 
-  "IT", "LT", "LV", "LU", "NL", "PT", "SK", "FI", "MT", "SI"
-)
+EA19_code <- c("AT", "BE", "CY", "DE_TOT", "EE", "IE", "EL", "ES", "FX", 
+               "IT", "LT", "LV", "LU", "NL", "PT", "SK", "FI", "MT", "SI")
 
 url_country <- paste0("A.NR.Y15-64.T.", paste0(EA19_code, collapse = "+"))
 df <- rdb("Eurostat", "demo_pjanbroad", mask = url_country)
@@ -356,7 +350,7 @@ pop_eurostat_bycountry |>
 
 ggsave("04_Eurostat_population.png", path = fig_path, height = 12, width = 12)
 graphics.off()
-# There are still two problems with this time series:
+# There remain two problems with this time series:
 #   1) the series does not cover all 19 Euro area member countries for the whole period
 #   2) the data are annual, not quarterly
 
@@ -374,7 +368,7 @@ pop_eurostat_bycountry |>
 # sum for 16 countries between 1970 and 1982.
 
 # Sum the annual population for the EA16
-EA16_code <- filter(.data = pop_eurostat_bycountry, period == "1970-01-01")$country
+EA16_code <- filter(pop_eurostat_bycountry, period == "1970-01-01")$country
 
 pop_a_16 <- pop_eurostat_bycountry |>
   filter(country %in% EA16_code) |> 
@@ -460,7 +454,7 @@ pop <- pop_StructTS |>
 # but we will not use it afterwards.
 
 # Convert annual population series to 2005 basis index
-valref <- filter(.data = pop_chained, period == "2005-01-01")$value
+valref <- filter(pop_chained, period == "2005-01-01")$value
 
 pop_a_ind <- pop_chained |> 
   mutate(
@@ -647,7 +641,7 @@ df1 <- chain(
 # We also want to make the series as smooth as possible for normalization.
 
 # First we chain the two series
-recent_pop_q   <- filter(.data = recent_data, var == "pop")
+recent_pop_q   <- filter(recent_data, var == "pop")
 min_date_pop_q <- min(recent_pop_q$period)
 
 pop <- pop_StructTS |> 

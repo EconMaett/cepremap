@@ -7,9 +7,10 @@ library(seasonal)
 library(kableExtra)
 library(RColorBrewer)
 source("R/utils.R")
+palette(brewer.pal(n = 9, name = "Set1"))
 fig_path  <- "figures/01_five-countries-data"
 last_date <- as.Date("2019-12-31")
-palette(brewer.pal(n = 9, name = "Set1"))
+
 ## Gather databases -----
 # 1. Smets & Wouters (2003) data base
 sw03 <- read_csv("data/EA_SW_rawdata.csv") |>

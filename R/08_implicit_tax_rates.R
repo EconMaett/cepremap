@@ -7,7 +7,9 @@ library(tidyverse)
 library(zoo)
 library(rdbnomics)
 library(kableExtra)
+library(RColorBrewer)
 source("R/utils.R")
+palette(brewer.pal(n = 9, name = "Set1"))
 
 fig_path <- "figures/08_ITR/"
 
@@ -57,13 +59,13 @@ year_max <- 2019
 #      b. Expenditure taxes (D59C)
 #      c. Payments by households for licences (D59D)
 # Eurostat: Main national accounts tax aggregates (gov_10a_taxag)
-url_country <- paste(c("AT","BE","CY","EE","FI","FR","DE","EL","IE","IT",
-                       "LV","LT","LU","MT","NL","PT","SK","SI","ES"), collapse = "+")
+url_country <- paste(c("AT", "BE", "CY", "EE", "FI", "FR", "DE", "EL", "IE", "IT",
+                       "LV", "LT", "LU", "MT", "NL", "PT", "SK", "SI", "ES"), collapse = "+")
 
-url_taxes <- paste(c("D211","D212",
-                     "D214","D214B","D214C","D214K",
-                     "D29D","D29F","D29G",
-                     "D59B","D59C","D59D"), collapse = "+")
+url_taxes <- paste(c("D211", "D212",
+                     "D214", "D214B", "D214C", "D214K",
+                     "D29D", "D29F", "D29G",
+                     "D59B", "D59C", "D59D"), collapse = "+")
 
 url_filter <- paste0("A.MIO_NAC.S13_S212.", url_taxes, ".", url_country)
 
@@ -78,7 +80,7 @@ ITR_cons_min_d <- ITR_cons_num |>
   summarize(mindate = min(year(period))) |> 
   spread(var, mindate)
 
-kable(x = ITR_cons_min_d, format = "html", caption = "Taxes on consumption: beginning of the sample") |> 
+kable(ITR_cons_min_d, format = "html", caption = "Taxes on consumption: beginning of the sample") |> 
   kable_styling(
     bootstrap_options = c("striped", "hover", "condensed",  "responsive"), 
     position = "center", font_size = 12) |> 
@@ -103,7 +105,7 @@ ITR_cons_max_d <- ITR_cons_num |>
   summarize(max_date = max(year(period))) |> 
   spread(var, max_date)
 
-kable(x = ITR_cons_max_d, format = "html", caption = "Taxes on consumption: end of the sample") |> 
+kable(ITR_cons_max_d, format = "html", caption = "Taxes on consumption: end of the sample") |> 
   kable_styling(
     bootstrap_options = c("striped", "hover", "condensed",  "responsive"), 
     position = "center", font_size = 12) |> 
@@ -175,7 +177,7 @@ ITR_cons_num <- ITR_cons_num |>
 # Eurostat: Final consumption aggregates by durability (nama_10_fcs).
 url_filter <- paste0("A.CP_MNAC.", "P31_S14_DC", ".", url_country)
 
-ITR_cons_den <- rdb(provider_code = "Eurostat", dataset_code = "nama_10_fcs", mask = url_filter) |> 
+ITR_cons_den <- rdb("Eurostat", "nama_10_fcs", mask = url_filter) |> 
   filter(year(period) >= 1995 & year(period) < year_max) |> 
   select(country = geo, period, value, var = na_item)
 
@@ -184,7 +186,7 @@ ITR_cons_minmax_d <- ITR_cons_den |>
   group_by(country) |> 
   summarize(min_date = min(year(period)), max_date = max(year(period)))
 
-kable(x = ITR_cons_minmax_d, format = "html", 
+kable(ITR_cons_minmax_d, format = "html", 
       caption = "Final consumption expenditure of households: beginning and end of the sample", 
       table.attr = "style=\"width:100%\"") |> 
   kable_styling(position = "center", font_size = 12)
@@ -200,7 +202,7 @@ ITR_consumption <- bind_rows(ITR_cons_num, ITR_cons_den) |>
 url_filter <- paste0("A.CP_MPPS_EU27_2020.", "B1GQ", ".", url_country)
 # previously: paste0("A.CP_MPPS.", "B1GQ", ".", url_country)
 
-gdp <- rdb(provider_code = "Eurostat", dataset_code = "nama_10_gdp", mask = url_filter) |> 
+gdp <- rdb("Eurostat", "nama_10_gdp", mask = url_filter) |> 
   select(period, value, country = geo) |> 
   add_column(var = "gdp") |> 
   filter(year(period) >= 1995 & year(period) < year_max)
@@ -210,13 +212,13 @@ EA_gdp <- gdp |>
   summarize(value = sum(value))
 
 weights <- gdp |> 
-  left_join(y = EA_gdp, by = join_by(period)) |> 
+  left_join(EA_gdp, by = join_by(period)) |> 
   ungroup() |> 
   mutate(country, period, weight = value.x / value.y, .keep = "none")
 
 # Apply the weights to the country data to get the Euro Area GDP-weighted average. 
 ITR_consumption_EA_na <- ITR_consumption |> 
-  left_join(y = weights, by = join_by(country, period))
+  left_join(weights, by = join_by(country, period))
 
 ITR_consumption_EA_na[is.na(ITR_consumption_EA_na)] <- 0
 
@@ -237,12 +239,12 @@ ITR_consumption_FIN$country <- factor(ITR_consumption_FIN$country)
 levels(ITR_consumption_FIN$country) <- list_country
 
 # Plot the final series for France, Germany, Italy, Spain and the Euro Area.
-ggplot(data = ITR_consumption_FIN, mapping = aes(x = period, y = value, color = country)) +
-  geom_line(linewidth = 1.2)+
+ggplot(ITR_consumption_FIN, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2)+
   my_theme() +
   ggtitle("Implicit Tax Rate on Consumption")
 
-ggsave(filename = "01_ITR_consumption.png", path = fig_path, width = 12, height = 12)
+ggsave("01_ITR_consumption.png", path = fig_path, width = 12, height = 12)
 graphics.off()
 
 ## Implicit tax rate on labor ----
@@ -274,7 +276,7 @@ graphics.off()
 url_taxes  <- paste(c("D51A_C1", "D29C", "D611C", "D613CE"), collapse = "+")
 url_filter <- paste0("A.MIO_NAC.S13_S212.", url_taxes, ".", url_country)
 
-ITR_lab_num_raw <- rdb(provider_code = "Eurostat", dataset_code = "gov_10a_taxag", mask = url_filter)
+ITR_lab_num_raw <- rdb("Eurostat", "gov_10a_taxag", mask = url_filter)
 
 ITR_lab_num1 <- ITR_lab_num_raw |> 
   mutate(country = geo, period, var = na_item, value, .keep = "none") |> 
@@ -288,12 +290,12 @@ ITR_lab_num1 <- ITR_lab_num_raw |>
 #   2. From capital transfers from general government to relevant sectors representing taxes and social contributions assessed but unlikely to be collected (D995):
 #      a. part raised on employers’ labor tax.
 #      b. part raised on employees’ labor tax.
-#   3. From taxes on individual or household income including holding gains - part raised on labour income (D51A_C1), exclude the following for the calculation of the personal income tax:
+#   3. From taxes on individual or household income including holding gains - part raised on labor income (D51A_C1), exclude the following for the calculation of the personal income tax:
 #      a. (D51A_C02): used dividend imputation (positive).
 #      b. (D51A_C05): civil servants contribution to the unemployment insurance regime.
 #      c. (D51A_C06): other social levies.
 #      d. (D51A_C08): levies on the income from financial assets (PRCM).
-#   4. From taxes on individual or household income including holding gains - part raised on labour income (D51A_C1), include the following for the calculation of the Employees’ SSC:
+#   4. From taxes on individual or household income including holding gains - part raised on labor income (D51A_C1), include the following for the calculation of the Employees’ SSC:
 #      a. (D51A_C05): civil servants contribution to the unemployment insurance regime.
 #   Spain: https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/data_on_taxation/es-national-tax.xlsx
 #   1. Taxes on income assessed but unlikely to be collected (D995C).
@@ -309,7 +311,7 @@ ITR_lab_num1 <- ITR_lab_num_raw |>
 # URL: https://ec.europa.eu/taxation_customs/business/economic-analysis-taxation/data-taxation_en
 
 # Eurostat Tax Revenue Statistics: https://ec.europa.eu/eurostat/statistics-explained/index.php/Tax_revenue_statistics
-labour_specificities <- readxl::read_xlsx(path = "data/s_labour.xlsx") |> 
+labor_specificities <- readxl::read_xlsx(path = "data/s_labour.xlsx") |> 
   mutate(period = as.Date(period)) |> 
   select(country, period, corr_pit = total_split1, corr_leyrs = total_leyrs, corr_lees = total_lees) |> 
   filter(year(period) >= 1995 & year(period) < year_max)
@@ -325,7 +327,7 @@ labour_specificities <- readxl::read_xlsx(path = "data/s_labour.xlsx") |>
 # in order to allocate the personal income tax revenue across different sources of income. 
 
 # It provides data for estimating the part of the revenue from personal income tax 
-# that can be attributed to labour income. 
+# that can be attributed to labor income. 
 
 # The tables below can be found in the reports on Taxation Trends in the European Union in its 
 #   2020: https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2020.pdf
@@ -354,7 +356,7 @@ pit_2020_raw_d <- pit_2020_raw |>
 
 kable(
   x = pit_2020_raw_d, format = "html", 
-  caption = "Personal income tax revenue allocated to employed labour income, in % of total revenue of personal income tax (2004–2018)",
+  caption = "Personal income tax revenue allocated to employed labor income, in % of total revenue of personal income tax (2004–2018)",
   table.attr = "style=\"width:100%\"") |> 
   kable_styling(
     bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
@@ -386,23 +388,23 @@ pit_2014 <- read_csv(file = "data/pit_2014.csv") |>
   gather(period, r_2014, -country)
 
 pit <- pit_2014 |> 
-  full_join(y = pit_2016, by = join_by(country,period)) |> 
-  mutate(r_2016 = if_else(is.na(r_2016), true = r_2014, false = r_2016)) |> 
-  full_join(y = pit_2017, by = join_by(country, period)) |> 
-  mutate(r_2017 = if_else(is.na(r_2017), true = r_2016, false = r_2017)) |> 
-  full_join(y = pit_2018, by = join_by(country, period)) |> 
-  mutate(r_2018 = if_else(is.na(r_2018), true = r_2017, false = r_2018)) |> 
-  full_join(y = pit_2019, by = join_by(country, period)) |> 
-  mutate(r_2019 = if_else(is.na(r_2019), true = r_2018, false = r_2019)) |> 
-  full_join(y = pit_2020, by = join_by(country, period)) |> 
-  mutate(r_2020 = if_else(is.na(r_2020), true = r_2018, false = r_2020)) |> 
+  full_join(pit_2016, by = join_by(country, period)) |> 
+  mutate(r_2016 = if_else(is.na(r_2016), r_2014, r_2016)) |> 
+  full_join(pit_2017, by = join_by(country, period)) |> 
+  mutate(r_2017 = if_else(is.na(r_2017), r_2016, r_2017)) |> 
+  full_join(pit_2018, by = join_by(country, period)) |> 
+  mutate(r_2018 = if_else(is.na(r_2018), r_2017, r_2018)) |> 
+  full_join(pit_2019, by = join_by(country, period)) |> 
+  mutate(r_2019 = if_else(is.na(r_2019), r_2018, r_2019)) |> 
+  full_join(pit_2020, by = join_by(country, period)) |> 
+  mutate(r_2020 = if_else(is.na(r_2020), r_2018, r_2020)) |> 
   mutate(country, period = ymd(period), a_weight = r_2020 / 100, .keep = "none")
 
 ITR_lab_num2 <- ITR_lab_num_raw |> 
   mutate(country = geo, period, var = na_item, value, .keep = "none") |> 
   filter(year(period) >= 1995 & year(period) < year_max & var == "D51A_C1") |> 
-  left_join(y = labour_specificities, by = join_by(country, period)) |>
-  left_join(y = pit, by = join_by(country, period))
+  left_join(labor_specificities, by = join_by(country, period)) |>
+  left_join(pit, by = join_by(country, period))
 
 ITR_lab_num2[is.na(ITR_lab_num2)] <- 0
 
@@ -432,21 +434,21 @@ ITR_lab_num <- bind_rows(ITR_lab_num1, ITR_lab_num2)
 # Eurostat “GDP and main components (output, expenditure and income)” (nama_10_gdp).
 url_filter <- paste0("A.CP_MNAC.", "D1", ".", url_country)
 
-ITR_lab_den <- rdb(provider_code = "Eurostat", dataset_code = "nama_10_gdp", mask = url_filter) |> 
+ITR_lab_den <- rdb("Eurostat", "nama_10_gdp", mask = url_filter) |> 
   mutate(country = geo, period, value, var = na_item, .keep = "none") |> 
   filter(year(period) >= 1995 & year(period) < year_max)
 
-ITR_labour_na <- bind_rows(ITR_lab_num, ITR_lab_den) |> 
+ITR_labor_na <- bind_rows(ITR_lab_num, ITR_lab_den) |> 
   spread(var, value)
 
-ITR_lab_min_d <- ITR_labour_na |> 
+ITR_lab_min_d <- ITR_labor_na |> 
   gather(var, value, -country, -period) |> 
   na.omit() |> 
   group_by(country, var) |> 
   summarize(min_date = min(year(period))) |> 
   spread(var, min_date)
 
-kable(x = ITR_lab_min_d, format = "html", caption = "Taxes on employed labour: beginning of the sample") |> 
+kable(ITR_lab_min_d, format = "html", caption = "Taxes on employed labor: beginning of the sample") |> 
   kable_styling(
     bootstrap_options = c("striped", "hover", "condensed",  "responsive"), 
     position = "center", font_size = 12) |> 
@@ -460,30 +462,29 @@ kable(x = ITR_lab_min_d, format = "html", caption = "Taxes on employed labour: b
       )
     )
 
-ITR_labour_na <- ITR_labour_na |> 
-  left_join(y = labour_specificities, by = join_by(country, period))
+ITR_labor_na <- ITR_labor_na |> 
+  left_join(labor_specificities, by = join_by(country, period))
 
-ITR_labour_na[is.na(ITR_labour_na)] <- 0 
+ITR_labor_na[is.na(ITR_labor_na)] <- 0 
 
-ITR_labour <- ITR_labour_na |> 
+ITR_labor <- ITR_labor_na |> 
   mutate(
     country,
     period,
-    ITR_labour = (D51A_C1 + D29C + D611C + D613CE + corr_leyrs + corr_lees) / (D1 + D29C),
+    ITR_labor = (D51A_C1 + D29C + D611C + D613CE + corr_leyrs + corr_lees) / (D1 + D29C),
     ITR_pi = D51A_C1 / (D1 + D29C),
     ITR_essc = (D613CE + corr_lees) / (D1 + D29C),
     ITR_esscprt = (D611C + D29C + corr_leyrs) / (D1 + D29C),
-    .keep = "none"
-    )
+    .keep = "none")
 
-ITR_lab_max_d  <- ITR_labour_na |> 
+ITR_lab_max_d  <- ITR_labor_na |> 
   gather(var, value, -country, -period) |> 
   na.omit() |> 
   group_by(country, var) |> 
   summarize(max_date = max(year(period))) |> 
   spread(var, max_date)
 
-kable(x = ITR_lab_max_d, format = "html", caption = "Taxes on employed labour: end of the sample") |> 
+kable(ITR_lab_max_d, format = "html", caption = "Taxes on employed labor: end of the sample") |> 
   kable_styling(
     bootstrap_options = c("striped", "hover", "condensed",  "responsive"), 
     position = "center", font_size = 12) |> 
@@ -499,12 +500,12 @@ kable(x = ITR_lab_max_d, format = "html", caption = "Taxes on employed labour: e
 
 # We use the same weights that were established for the ITR on consumption. 
 # The chart below shows the final series for France, Germany, Italy, Spain and the Euro Area.
-ITR_labour_EA <- ITR_labour |> 
-  left_join(y = weights, by = c("country" = "country", "period" = "period")) |> 
-  filter(ITR_labour < 1) |> 
+ITR_labor_EA <- ITR_labor |> 
+  left_join(weights, by = c("country" = "country", "period" = "period")) |> 
+  filter(ITR_labor < 1) |> 
   mutate(
     period,
-    ITR_labour  = ITR_labour * weight,
+    ITR_labor  = ITR_labor * weight,
     ITR_pi      = ITR_pi * weight,
     ITR_essc    = ITR_essc * weight,
     ITR_esscprt = ITR_esscprt * weight,
@@ -512,40 +513,40 @@ ITR_labour_EA <- ITR_labour |>
     ) |> 
   group_by(period) |> 
   summarize(
-    ITR_labour  = sum(ITR_labour),
+    ITR_labor  = sum(ITR_labor),
     ITR_pi      = sum(ITR_pi),
     ITR_essc    = sum(ITR_essc),
     ITR_esscprt = sum(ITR_esscprt)
     ) |> 
   add_column(country = "EA19")
 
-ITR_labour_4 <- ITR_labour |> 
+ITR_labor_4 <- ITR_labor |> 
   filter(grepl(pattern = 'FR|DE|IT|ES', x = country))
 
-ITR_labour_FIN1 <- bind_rows(ITR_labour_4, ITR_labour_EA)
+ITR_labor_FIN1 <- bind_rows(ITR_labor_4, ITR_labor_EA)
 
-ITR_labour_FIN1$country <- factor(ITR_labour_FIN1$country)
+ITR_labor_FIN1$country <- factor(ITR_labor_FIN1$country)
 
-levels(ITR_labour_FIN1$country) <- list_country
+levels(ITR_labor_FIN1$country) <- list_country
 
-ggplot(data = ITR_labour_FIN1, mapping = aes(x = period, y = ITR_labour, color = country)) +
-  geom_line(linewidth = 1.2) +
+ggplot(ITR_labor_FIN1, aes(period, ITR_labor, color = country)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Implicit Tax Rate on Labour")
+  ggtitle("Implicit Tax Rate on Labor")
 
-ggsave(filename = "02_ITR_Labor.png", path = fig_path, width = 12, height = 12)
+ggsave("02_ITR_Labor.png", path = fig_path, width = 12, height = 12)
 graphics.off()
 
 # For the analysis, it is possible to recover the evolution 
 # of the personal income tax, the employees’ SSC and the employers’ SSC 
 # as a share of the ITR on labor. The chart below shows this evolution:
-ITR_labour_shares <- ITR_labour_FIN1 |> 
+ITR_labor_shares <- ITR_labor_FIN1 |> 
   mutate(
     country,
     period,
-    w_pi      = ITR_pi / ITR_labour,
-    w_essc    = ITR_essc / ITR_labour,
-    w_esscprt = ITR_esscprt / ITR_labour,
+    w_pi      = ITR_pi / ITR_labor,
+    w_essc    = ITR_essc / ITR_labor,
+    w_esscprt = ITR_esscprt / ITR_labor,
     .keep = "none"
     ) |> 
   gather(var, value, -period, -country)
@@ -556,49 +557,49 @@ list_var <- list(
   "Employers' SSC and payroll taxes" = "w_esscprt"
   )
 
-ITR_labour_shares$var <- factor(ITR_labour_shares$var)
+ITR_labor_shares$var <- factor(ITR_labor_shares$var)
 
-levels(ITR_labour_shares$var) <- list_var
+levels(ITR_labor_shares$var) <- list_var
 
-ggplot(data = ITR_labour_shares, mapping = aes(x = period, y = value, color = var)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ country , scales = "fixed", ncol = 2) +
+ggplot(ITR_labor_shares, aes(period, value, color = var)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ country , scales = "fixed", ncol = 2) +
   my_theme() +
-  ggtitle("Personal Income Tax, Employees' SSC and Employers' SSC & payroll taxes \n (as a share of the ITR on Labour)")
+  ggtitle("Personal Income Tax, Employees' SSC and Employers' SSC & payroll taxes \n (as a share of the ITR on Labor)")
 
-ggsave(filename = "03_ITR_SSC.png", path = fig_path, width = 12, height = 12)
+ggsave("03_ITR_SSC.png", path = fig_path, width = 12, height = 12)
 graphics.off()
 
-# The chart below shows the evolution of the composition of the ITR on labour:
-ITR_labour_FIN <- ITR_labour_FIN1 |> 
-  select(-ITR_labour) |> 
+# The chart below shows the evolution of the composition of the ITR on labor:
+ITR_labor_FIN <- ITR_labor_FIN1 |> 
+  select(-ITR_labor) |> 
   gather(var, value, -period, -country)
 
-list_var <- list("Labour income tax" = "ITR_pi",
+list_var <- list("Labor income tax" = "ITR_pi",
                  "Employees' SSC" = "ITR_essc",
                  "Employers' SSC and payroll taxes" = "ITR_esscprt")
 
-ITR_labour_FIN$var <- factor(ITR_labour_FIN$var)
+ITR_labor_FIN$var <- factor(ITR_labor_FIN$var)
 
-levels(ITR_labour_FIN$var) <- list_var
+levels(ITR_labor_FIN$var) <- list_var
 
-ggplot(data = ITR_labour_FIN, mapping = aes(fill = var, y = value, x = period)) + 
+ggplot(ITR_labor_FIN, mapping = aes(fill = var, value, x = period)) + 
   geom_bar(stat = "identity") +
-  facet_wrap(facets = ~ country , scales = "fixed", ncol = 3) +
+  facet_wrap(~ country , scales = "fixed", ncol = 3) +
   my_theme() +
-  ggtitle("Composition of the Implicit Tax Rate on Labour")
+  ggtitle("Composition of the Implicit Tax Rate on Labor")
 
-ggsave(filename = "04_ITR_Labor.png", path = fig_path, width = 12, height = 12)
+ggsave("04_ITR_Labor.png", path = fig_path, width = 12, height = 12)
 graphics.off()
 
 # And the last chart shows all the ITRs for a multi-country comparison:
-ggplot(data = ITR_labour_FIN, mapping = aes(x = period, y = value, color = country)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ var , ncol = 3) +
+ggplot(ITR_labor_FIN, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ var , ncol = 3) +
   my_theme() +
-  ggtitle("Implicit Tax Rates on Labour (%)")
+  ggtitle("Implicit Tax Rates on Labor (%)")
 
-ggsave(filename = "05_ITR_Labor.png", path = fig_path, width = 12, height = 12)
+ggsave("05_ITR_Labor.png", path = fig_path, width = 12, height = 12)
 graphics.off()
 
 ## Implicit tax rate on corporate income ----
@@ -621,7 +622,7 @@ ITR_corporate_income <- read_csv(file = "data/ITR_corporate_income.csv") |>
   filter(year(period) >= 1995 & year(period) < year_max)
 
 ITR_corporate_income_EA <- ITR_corporate_income |> 
-  left_join(y = weights, by = join_by(country, period)) |> 
+  left_join(weights, by = join_by(country, period)) |> 
   mutate(period, value = value * weight, .keep = "none") |> 
   group_by(period) |> 
   summarize(value = sum(value)) |> 
@@ -637,18 +638,18 @@ ITR_corporate_income_FIN$country <- factor(ITR_corporate_income_FIN$country)
 
 levels(ITR_corporate_income_FIN$country) <- list_country
 
-ggplot(data = ITR_corporate_income_FIN, mapping = aes(x = period, y = value, color = country)) +
-  geom_line(linewidth = 1.2) +
+ggplot(ITR_corporate_income_FIN, aes(period, value, color = country)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   ggtitle("Implicit Tax Rate on Corporate Income")
 
-ggsave(filename = "06_ITR_Corporate.png", path = fig_path, width = 12, height = 12)
+ggsave("06_ITR_Corporate.png", path = fig_path, width = 12, height = 12)
 graphics.off()
 
 ## Average values ----
 
 # We summarize the average values of the implicit tax rates in the following table:
-ITR <- bind_rows(ITR_corporate_income_FIN, ITR_labour_FIN, ITR_consumption_FIN) |> 
+ITR <- bind_rows(ITR_corporate_income_FIN, ITR_labor_FIN, ITR_consumption_FIN) |> 
   na.omit() |> 
   mutate(value = round(value, digits = 3))
 
@@ -659,16 +660,16 @@ ss_ITR <- ITR |>
   spread(country, steady_state) |> 
   ungroup() 
 
-kable(x = ss_ITR, format = "html", caption = "Implicit tax rates - average values",
+kable(ss_ITR, format = "html", caption = "Implicit tax rates - average values",
       table.attr = "style=\"width:100%\"") |> 
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), position = "center")
 
 ss_ITR_plot <- ss_ITR |> 
   gather(country, value, -var)
 
-ggplot(data = ss_ITR_plot, mapping = aes(x = country, y = value, fill = country)) +
+ggplot(ss_ITR_plot, aes(country, value, fill = country)) +
   geom_bar(stat = "identity") +
-  facet_wrap(facets = ~ var , scales = "free_y", ncol = 3) +
+  facet_wrap(~ var , scales = "free_y", ncol = 3) +
   xlab(NULL) + ylab(NULL) +
   theme_minimal() +
   theme(
@@ -678,13 +679,13 @@ ggplot(data = ss_ITR_plot, mapping = aes(x = country, y = value, fill = country)
     ) +
   ggtitle("Implicit tax rates - average values")
 
-ggsave(filename = "07_ITR_Average.png", path = fig_path, width = 12, height = 12)
+ggsave("07_ITR_Average.png", path = fig_path, width = 12, height = 12)
 graphics.off()
 
 # We can download ready-to-use data for France, Germany, Italy, Spain and the Euro Area in csv format here.
 # URL: http://shiny.nomics.world/data/ITR_eurodata.csv
 list_tau <- list(
-  "taun"  = "Labour income tax" ,
+  "taun"  = "Labor income tax" ,
   "tauwh" = "Employees' SSC",
   "tauwf" = "Employers' SSC and payroll taxes",
   "tauc"  = "Consumption tax", 
@@ -716,7 +717,7 @@ write.csv(ITR_eurodata, file = "data/ITR_eurodata.csv", row.names = FALSE)
 
 ## Comparison ----
 # The Directorate-General for Taxation & Customs Union of the European Commission 
-# provides data on the implicit tax rates on consumption and labour 
+# provides data on the implicit tax rates on consumption and labor 
 # since 2005, using detailed revenue data provided by member states. 
 
 # You can find this data here. 
@@ -734,11 +735,11 @@ write.csv(ITR_eurodata, file = "data/ITR_eurodata.csv", row.names = FALSE)
 
 # Other minimal differences could stem from taxes assessed but unlikely to be collected when the data was released, 
 # or eventually discretionary adjustments or specificities applied by the DG Taxation and Customs Union.
-labour_comp <- ITR_labour_FIN1 |> 
-  select(country, period, value = ITR_labour) |> 
-  add_column(var = "Labour tax")
+labor_comp <- ITR_labor_FIN1 |> 
+  select(country, period, value = ITR_labor) |> 
+  add_column(var = "Labor tax")
 
-conso_labour_comp <- bind_rows(labour_comp, ITR_consumption_FIN) |> 
+conso_labor_comp <- bind_rows(labor_comp, ITR_consumption_FIN) |> 
   add_column(data_s = "Updated")
 
 eucom <- read_csv(file = "data/eucom.csv") |> 
@@ -749,30 +750,29 @@ eucom$country <- factor(eucom$country)
 
 levels(eucom$country) <- list_country
 
-comparison <- bind_rows(conso_labour_comp, eucom)
+comparison <- bind_rows(conso_labor_comp, eucom)
 
 comparison1 <- comparison |> 
   filter(var == "Consumption tax")
 
-ggplot(data = comparison1, mapping = aes(x = period, y = value, color = data_s)) +
-  geom_line(linewidth = 1.2) +
-  facet_wrap(facets = ~ country , scales = "fixed", ncol = 3) +
+ggplot(comparison1, aes(period, value, color = data_s)) +
+  geom_line(lwd = 1.2) +
+  facet_wrap(~ country , scales = "fixed", ncol = 3) +
   my_theme() +
   ggtitle(expression(atop("Consumption tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))))
 
-ggsave(filename = "08_comparison_1.png", path = fig_path, width = 12, height = 12)
+ggsave("08_comparison_1.png", path = fig_path, width = 12, height = 12)
 graphics.off()
 
 comparison2 <- comparison |> 
-  filter(var == "Labour tax")
+  filter(var == "Labor tax")
 
-ggplot(data = comparison2, mapping = aes(x = period, y = value, color = data_s)) +
-  geom_line(linewidth = 1.2)+
-  facet_wrap(facets = ~ country , scales = "fixed", ncol = 3) +
+ggplot(comparison2, aes(period, value, color = data_s)) +
+  geom_line(lwd = 1.2)+
+  facet_wrap(~ country , scales = "fixed", ncol = 3) +
   my_theme() +
-  ggtitle(expression(atop("Labour tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))))
+  ggtitle(expression(atop("Labor tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))))
 
-ggsave(filename = "09_comparison_2.png", path = fig_path, width = 12, height = 12)
+ggsave("09_comparison_2.png", path = fig_path, width = 12, height = 12)
 graphics.off()
-
 # END
