@@ -9,22 +9,22 @@ library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 9, name = "Set1"))
 fig_path <- "figures/11_sw03-data/"
-# Smets & Wouters (2003) used eight time series:
-#    1 GDP
-#    2 GDP deflator
-#    3 Consumption
-#    4 Investment
-#    5 Employment
-#    6 Wage
-#    7 Working-age population
-#    8 Interest rate
+# Smets & Wouters (2003) use eight time series:
+#    1. GDP
+#    2. GDP deflator
+#    3. Consumption
+#    4. Investment
+#    5. Employment
+#    6. Wage
+#    7. Working-age population
+#    8. Interest rate
 
-# We add three more:
-#    9 Hours worked
-#   10 Consumption deflator
-#   11 Investment deflator
+# Add three more:
+#    9. Hours worked
+#   10. Consumption deflator
+#   11. Investment deflator
 
-# We merge data from:
+# Merge data from:
 #   - The Area-Wide Model (AWM) proposed by Fagan et al. (2001).
 #   - The Conference Board
 #   - The European Central Bank (ECB)
@@ -41,9 +41,9 @@ fig_path <- "figures/11_sw03-data/"
 
 ## Historical data (1970 - end of the 1990s) ----
 # Three sources are used to construct the database until the 1990s: 
-#   - The Area-Wide Model (AWM) database
-#   - The Conference Board
-#   - The European Central Bank (ECB)
+#   1. The Area-Wide Model (AWM) database
+#   2. The Conference Board
+#   3. The European Central Bank (ECB)
 
 ### AWM database ----
 # The Area-Wide Model (AWM) database was originally proposed by Fagan et al. (2001).
@@ -174,8 +174,8 @@ hours_confboard_chained <- chain(
 # Once the annual data have been completed since 1970 have been completed,
 # the issue of converting the annual data into quarterly data remains.
 
-# We create a data frame with the period for the quarters, and NAs whenever t
-# here is no value available.
+# Create a data frame with the period for the quarters, and NAs whenever
+# there is no value available.
 hours_confboard_chained_q <- tibble(
   period = seq(
     from = as.Date("1970-07-01"), 
@@ -193,16 +193,16 @@ hours_confboard_chained_q <- tibble(
 #   - Kalman filter
 hours <- hours_confboard_chained_q
 
-# First we apply constant quarterly growth rates over one year with `zoo::na.approx()`.
+# Constant quarterly growth rates over one year with `zoo::na.approx()`.
 # The missing values (NAs) are replaced by linear interpolation via `stats::approx()`
 hours_approx <- hours |>
   mutate(value = zoo::na.approx(value), var = "hours_approx")
 
-# Next we use cubic spline interpolation
+# Cubic spline interpolation
 hours_spline <- hours |> 
   mutate(value = zoo::na.spline(value), var = "hours_spline")
 
-# Next we use the Kalman filter and smoother to interpolate the missing values
+# Kalman filter and smoother to interpolate the missing values
 # Convert the data frame to a time series `ts` object first
 hoursts <- ts(data = hours$value, start = c(1970, 4), frequency = 4)
 # Note that we have passed the data to Q4, not Q3...
@@ -212,7 +212,7 @@ hoursts <- ts(data = hours$value, start = c(1970, 4), frequency = 4)
 struct_ts <- StructTS(x = hoursts, type = "trend")
 smooth_ts <- tsSmooth(object = struct_ts)
 
-# We want the "level" only
+# "level" only
 smoothed_hoursts <- tsSmooth(object = StructTS(hoursts, type = "trend"))[, 1]
 
 # help("StructTS") # Fit structural model for a time series by maximum likelihood.
@@ -235,11 +235,11 @@ smoothed_hoursts <- tsSmooth(object = StructTS(hoursts, type = "trend"))[, 1]
 #   - `KalmanForecast()` 
 #   - `makeARIMA()`
 
-# We need to put the smoothed series into a data frame
+# Put the smoothed series into a data frame
 hours_StructTS <- hours |> 
   mutate(value = smoothed_hoursts, var = "hours_kalman")
 
-# Then we combine the three smoothing methods
+# Combine the three smoothing methods
 hours_filtered <- bind_rows(hours_approx, hours_spline, hours_StructTS)
 
 # Calculate quarterly growth rates with the log-lag approximation for that.
@@ -734,12 +734,12 @@ EA_SW_rawdata <- final_df |>
 
 write.csv(EA_SW_rawdata, file = "data/EA_SW_rawdata.csv", row.names = FALSE)
 
-# You can also download ready-to-use (normalized) data: shiny.cepremap.fr/data/EA_SW_data.csv
+# Ready-to-use (normalized) data: shiny.cepremap.fr/data/EA_SW_data.csv
 EA_SW_data <- final_df |> 
   mutate(period = gsub(" ", "", zoo::as.yearqtr(period))) |> 
   pivot_wider(names_from = var, values_from = value) |> 
   mutate(
-    period      = period,
+    period = period,
     gdp_rcp     = 1e+6 * gdp / (pop * 1000),
     conso_rpc   = 1e+6 * conso / (pop * 1000),
     inves_rpc   = 1e+6 * inves / (pop * 1000),

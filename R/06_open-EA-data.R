@@ -13,13 +13,13 @@ fig_path <- "figures/06_open-EA-data/"
 #   - Foreign interest rate
 #   - Oil prices
 #   - Real effective exchange rates
-#   - Import and export
+#   - Imports and exports
 
 ## Foreign demand ----
 # Build a series of foreign demand without trade between Euro area members.
-#   - Growth of imports in volume of main trading partners
-#   - Relative importance of trading partner in Euro zone exports
-#   - Sum over growth rates of imports weighted by the relative importance
+#   1. Growth of imports in volume of main trading partners
+#   2. Relative importance of trading partner in Euro zone exports
+#   3. Sum over growth rates of imports weighted by the relative importance
 
 ### Imports of goods and services of Euro zone main commercial partners ----
 # (Volume, quarterly, seasonally adjusted)
@@ -57,20 +57,16 @@ ggsave("01_imports.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### China special case ----
-# We take annual Chinese imports of goods and services from the 
+# Annual Chinese imports of goods and services from the 
 # IMF WEO database and use a spline interpolation to obtain quarterly values.
 df <- rdb(ids = "IMF/WEO:latest/CHN.TM_RPCH.pcent_change")
 
-imports_cn <- df |> select(period, value) |> 
+imports_cn <- df |> 
+  select(period, value) |> 
   na.omit() |> 
   arrange(period) |> 
   mutate(value = 100 * cumprod(1 + value / 100)) |> 
-  bind_rows(
-    tibble(
-      period = as.Date("1997-01-01"),
-      value = 100
-      )
-    ) |> 
+  bind_rows(tibble(period = as.Date("1997-01-01"), value = 100)) |> 
   arrange(period)
 
 imports_cn_q <- tibble(
@@ -115,35 +111,25 @@ kable(min_time)
 
 ### Eurozone exports of goods to main commercial partners ----
 # (Values in US Dollars, annual)
-# Use the value of exports of goods, free on board (FOB),
-# from the IMF DOT database.
+# Use the value of exports of goods, free on board (FOB), from the IMF DOT database.
 
 # Exporter countries of the Eurozone
-ea_country <- c(
-  "AT", "BE", "R1", "FR", "DE", "IT", "LU", "NL", 
-  "FI", "GR", "IE", "MT", "PT", "ES", "CY", "SK", 
-  "EE", "LV", "LT", "SI"
-)
+ea_country <- c("AT", "BE", "R1", "FR", "DE", "IT", "LU", "NL", "FI", "GR", 
+                "IE", "MT", "PT", "ES", "CY", "SK", "EE", "LV", "LT", "SI")
 
-ea_country_name <- c(
-  "Austria", "Belgium", "Luxembourg-Belgium", 
-  "France", "Germany", "Italy", "Luxembourg", 
-  "Netherlands", "Finland", "Greece", "Ireland", 
-  "Malta", "Portugal", "Spain", "Cyprus", 
-  "Slovak Republic", "Estonia", "Latvia", "Lithuania", 
-  "Slovenia"
-)
+ea_country_name <- c("Austria", "Belgium", "Luxembourg-Belgium", "France", 
+                     "Germany", "Italy", "Luxembourg", "Netherlands", 
+                     "Finland", "Greece", "Ireland", "Malta", "Portugal", 
+                     "Spain", "Cyprus", "Slovak Republic", "Estonia", "Latvia", 
+                     "Lithuania", "Slovenia")
 
 url_ea_country <- paste0(ea_country, collapse = "+")
 
 # Importer countries outside the Eurozone
-partner_country <- c(
-  "US", "GB", "DK", "NO", "SE", "CA", "CH", "JP", 
-  "AU", "BR", "IN", "ID", "KR", "CN"
-)
+partner_country <- c("US", "GB", "DK", "NO", "SE", "CA", "CH", 
+                     "JP", "AU", "BR", "IN", "ID", "KR", "CN")
 
 url_partner_country <- paste0(partner_country, collapse = "+")
-
 url_filter <- paste0("A.", url_ea_country, ".TXG_FOB_USD.", url_partner_country)
 
 df <- rdb("IMF", "DOT", mask = url_filter)
@@ -157,9 +143,8 @@ bilatx <- df |>
     ) |> 
   filter(period >= "1979-01-01")
 
-# The following list shows for each Eurozone member the
-# date from which we have data on exports towards one of the 14
-# selected trading partners.
+# The following list shows for each Eurozone member the date from which we have 
+# data on exports towards one of the 14 selected trading partners.
 start_sample <- bilatx |> 
   group_by(exporter, importer) |> 
   summarise(min_time = min(year(period))) |> 
@@ -192,8 +177,7 @@ bilatx <- bilatx |>
 #   - The Baltic states
 #   - Slovenia
 #   - The Slovak Republic
-# We represent the sum of exports of the Eurozone with and without
-# these five countries.
+# We represent the sum of exports of the Eurozone with and without these five countries.
 export_15 <- bilatx |> 
   filter(!exporter %in% c("Slovenia", "Slovak Republic", "Estonia", "Latvia", "Lithuania")) |> 
   mutate(var = "Eurozone - 15") |> 
@@ -222,14 +206,9 @@ graphics.off()
 
 #### Special case: Brazil, China, India, Indonesia ----
 # We have incomplete imports of goods and services for
-#   - Brazil
-#   - China
-#   - India
-#   - Indonesia
-# which lack data before 1997.
+# Brazil, China, India, Indonesia, which lack data before 1997.
 # Because these countries mainly developed their imports after 1997,
-# we want to check the growth rates of extra-exports with
-# and without these partners before 1997.
+# we want to check the growth rates of extra-exports with and without these partners before 1997.
 import_10 <- bilatx |> 
   filter(! importer %in% c("Brazil", "China", "India", "Indonesia")) |> 
   group_by(period) |> 
@@ -239,7 +218,7 @@ import_10 <- bilatx |>
 
 bilatx |> 
   filter(importer %in% c("Brazil", "China", "India", "Indonesia"))
-# Not included anyway!
+# Not included (?)
 
 plot_export2 <- bind_rows(
   mutate(export_all, var = "Importers - all"),
@@ -291,8 +270,8 @@ sumX_EA_importer_10 <- bilatx |>
 
 alphas_importer_10 <- sumX_EA_importer_10 |> 
   left_join(
-    filter(bilatx, !importer %in% c("Brazil", "China", "India", "Indonesia")),
-    join_by(period)
+    y = filter(bilatx, !importer %in% c("Brazil", "China", "India", "Indonesia")),
+    by = join_by(period)
   ) |> 
   mutate(alpha = value / xsum) |> 
   select(period, country = importer, alpha)
@@ -342,15 +321,9 @@ wd_index <- wd |>
   mutate(period, value = 100 * value / wd_index2010$value)
 
 wd_index_growth <- wd_index |> 
-  mutate(
-    value = value / lag(value, n = 4) - 1,
-    var = "2 - Growth rate"
-  )
+  mutate(value = value / lag(value, n = 4) - 1, var = "2 - Growth rate")
 
-plot_wd <- bind_rows(
-  wd_index_growth,
-  mutate(wd_index, var = "1 - Level")
-  )
+plot_wd <- bind_rows(wd_index_growth, mutate(wd_index, var = "1 - Level"))
 
 ggplot(plot_wd, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
@@ -362,7 +335,7 @@ ggsave("06_foreign-demand-ea.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Foreign interest rate ----
-# We use the US federal funds rate overnight as a proxy for the foreign interest rate.
+# US federal funds rate overnight as a proxy for the foreign interest rate.
 df <- rdb("FED", "H15", mask = "129.FF.O")
 
 shortrate <- df |> 
@@ -382,8 +355,7 @@ ggsave("07_foreign-interest-rate.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ## Oil prices ----
-# We take Brent crude oil prices from the OECD 
-# Economic Outlook (EO) data base.
+# Brent crude oil prices from the OECD Economic Outlook (EO) data base.
 df <- rdb(ids = "OECD/EO/OTO.WPBRENT.Q")
 
 oil_prices <- df |> 
@@ -427,11 +399,7 @@ trade <- df |>
   mutate(
     period = paste(year(period), quarter(period), sep = "-"),
     value,
-    var = if_else(
-      condition = grepl(pattern = "Import", x = series_name), 
-      true = "imports", 
-      false = "exports"
-      ),
+    var = if_else(grepl(pattern = "Import", series_name), "imports", "exports"),
     .keep = "none"
   ) |> 
   group_by(var, period) |> 
@@ -473,9 +441,9 @@ EA_Open_rawdata <- rawdata |>
   pivot_wider(names_from = var, values_from = value)
 
 EA_Open_rawdata |> 
-  write.csv(file = "data/EA_Open_rawdata.csv", row.names = FALSE)
+  write.csv("data/EA_Open_rawdata.csv", row.names = FALSE)
 
-# Download the raw series here: http://shiny.cepremap.fr/data/EA_Open_rawdata.csv
+# Raw series: http://shiny.cepremap.fr/data/EA_Open_rawdata.csv
 sw03 <- read.csv(file = "data/EA_SW_rawdata.csv") |> 
   mutate(period = ymd(period))
 
@@ -493,12 +461,9 @@ EA_Open_data <- EA_Open_rawdata |>
   )
 
 EA_Open_data |> 
-  mutate(
-    period = gsub(pattern = " ", replacement = "", x = as.yearqtr(period))
-  ) |> 
-  write.csv(file = "data/EA_Open_data.csv", row.names = FALSE)
-
-# Download the ready-to-use data here: http://shiny.cepremap.fr/data/EA_Open_data.csv
+  mutate(period = gsub(" ", "", as.yearqtr(period))) |> 
+  write.csv("data/EA_Open_data.csv", row.names = FALSE)
+# Ready-to-use data: http://shiny.cepremap.fr/data/EA_Open_data.csv
 
 # Plot the final database
 list_var <- list(

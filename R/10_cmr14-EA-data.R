@@ -11,18 +11,18 @@ source("R/utils.R")
 palette(brewer.pal(n = 9, name = "Set1"))
 fig_path <- "figures/10_cmr14-EA-data/"
 # Four financial time series are used in Christiano et al. (2014):
-#   1 Loans to non-financial corporations (NFC)
-#   2 Bank lending rates
-#   3 Entrepreneurial net worth
-#   4 Long-term interest rates
+#   1. Loans to non-financial corporations (NFC)
+#   2. Bank lending rates
+#   3. Entrepreneurial net worth
+#   4. Long-term interest rates
 
-# We add two series:
-#   5 House prices
-#   6 Loans to households (HH)
+# Add two series:
+#   5. House prices
+#   6. Loans to households (HH)
 
 # From the sources:
 #   - The Area-Wide Model (AWM) proposed by Fagan et al. (2001)
-#   - International Financial Statistics (IFS) from the International Monetary Fund (IMF)
+#   - International Financial Statistics (IFS) from the IMF
 #   - Bank of International Settlements (BIS)
 #   - European Central Bank (ECB)
 
@@ -143,8 +143,7 @@ loans_nfc_sumNoNLESBE <- loans_nfc_countries |>
 loans_nfc_chainedNL <- chain(
   to_rebase  = loans_nfc_sumNoNL,
   basis      = loans_nfc_sumAll,
-  date_chain = "1990-10-01"
-)
+  date_chain = "1990-10-01")
 
 loans_nfc_chained <- chain(
   to_rebase  = loans_nfc_sumNoNLESBE,
@@ -191,8 +190,7 @@ loans_hh_sumNoNLESBE <- loans_hh_countries |>
 loans_hh_chainedNL <- chain(
   to_rebase  = loans_hh_sumNoNL,
   basis      = loans_hh_sumAll,
-  date_chain = "1990-10-01"
-)
+  date_chain = "1990-10-01")
 
 loans_hh_chained <- chain(
   to_rebase  = loans_hh_sumNoNLESBE,
@@ -219,16 +217,14 @@ print(varname_hh)
 # of the sum of loans for all available countries to complete
 # the series for historical data.
 loans_nfc <- chain(
-  to_rebase  = mutate(.data = loans_nfc_chained, var = "loans_nfc"),
+  to_rebase  = mutate(loans_nfc_chained, var = "loans_nfc"),
   basis      = mutate(loans_nfc_EA, var = "loans_nfc"),
-  date_chain = "1999-01-01"
-)
+  date_chain = "1999-01-01")
 
 loans_hh <- chain(
-  to_rebase  = mutate(.data = loans_hh_chained, var = "loans_hh"),
-  basis      = mutate(.data = loans_hh_EA, var = "loans_hh"),
-  date_chain = "1999-01-01"
-)
+  to_rebase  = mutate(loans_hh_chained, var = "loans_hh"),
+  basis      = mutate(loans_hh_EA, var = "loans_hh"),
+  date_chain = "1999-01-01")
 
 # Bank lending rates ----
 ### Historical data from OECD ----
@@ -238,7 +234,7 @@ loans_hh <- chain(
 # Thus we only consider *five* countries.
 # As in the AWM methodology, we weight the sum of the lending rates
 # by the gross domestic product based on purchasing power-parity (PPP)
-# of each country in 1995, accordign to the IMF World Economic Outlook (WEO).
+# of each country in 1995, according to the IMF World Economic Outlook (WEO).
 country_code <- c("BEL", "FRA", "DEU", "ITA", "ESP")
 url_country  <- paste0(country_code, collapse = "+")
 
@@ -262,12 +258,7 @@ sum_pppgdp <- sum(ppppgdp$value_pppgdp)
 
 # Merge the two data sets and build a weighted mean
 lendingrate_old <- left_join(lendingrate_bycountry, ppppgdp, join_by("country")) |> 
-  mutate(
-    period  = period,
-    country = country,
-    value   = value * value_pppgdp,
-    .keep = "none"
-  ) |> 
+  mutate(period, country, value = value * value_pppgdp, .keep = "none") |> 
   group_by(period) |> 
   summarise(value = sum(value) / sum_pppgdp) |> 
   mutate(var = "lendingrate_old")
@@ -350,9 +341,6 @@ longrate_recent <- df |>
 
 dataplot <- bind_rows(tibble(longrate_recent, ind = "recent"), tibble(longrate_old, ind = "old"))
 
-min(longrate_recent$period)
-# Recent interest rate now available from 1990-10-01,
-# not just since 2001-01-01
 ggplot(dataplot, aes(period, value, color = ind)) +
   geom_line(lwd = 1.2) +
   my_theme() +
@@ -414,12 +402,9 @@ print(varname)
 ## Final financial database for the Euro Area ----
 # We build the final financial database with the six series
 final_df <- bind_rows(
-  loans_nfc,
-  loans_hh,
-  lendingrate,
-  longrate,
-  networth,
-  houseprice
+  loans_nfc, loans_hh,
+  lendingrate, longrate,
+  networth, houseprice
 )
 
 # Check the last available date for each variable
@@ -458,7 +443,7 @@ ggplot(plot_df, aes(period, value)) +
 ggsave("09_final.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# You can also download the six final series here: http://shiny.cepremap.fr/data/EA_Finance_rawdata.csv
+# Six final series: http://shiny.cepremap.fr/data/EA_Finance_rawdata.csv
 EA_Finance_rawdata <- final_df |> 
   pivot_wider(names_from = var, values_from = value)
 
@@ -466,12 +451,11 @@ write.csv(EA_Finance_rawdata, file = "data/EA_Finance_rawdata.csv", row.names = 
 
 ## Final CMR database for the Euro Area ----
 # Build a data base similar to the one in Christiano et al. (2014)
-# on the basis of the Smets and Wouters (2003) data base.
+# on the basis of the Smets & Wouters (2003) data base.
 
-# Start in 1980 Q1, as the financial series are not
-# available before that time.
+# Start in 1980 Q1, as the financial series are not available before that time.
 
-# You can download the raw series here: http://shiny.cepremap.fr/data/EA_CMR_rawdata.csv
+# Raw series: http://shiny.cepremap.fr/data/EA_CMR_rawdata.csv
 
 # Import EA_SW_rawdata.csv
 EA_SW_rawdata <- read.csv(file = "data/EA_SW_rawdata.csv") |> 
@@ -545,6 +529,5 @@ ggplot(plot_EA_CMR_data, aes(period, value)) +
 ggsave("10_CMR_EA.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Download the ready-to-use (normalized) data here: http://shiny.cepremap.fr/data/EA_CMR_data.csv
-
+# Normalized data: http://shiny.cepremap.fr/data/EA_CMR_data.csv
 # END

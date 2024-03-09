@@ -1,8 +1,7 @@
 # 02 - Electricity consumption in France ----
 # URL: https://macro.cepremap.fr/article/2020-12/electricity-conso-france/
-
-# Use high-frequency data to gauge the health of the economy in real time.
-# Focus on electricity consumption from ENEDIS (Électricité réseau distribution France)
+# High-frequency data to gauge the health of the economy in real time.
+# Electricity consumption from ENEDIS (Électricité réseau distribution France)
 # URL: https://data.enedis.fr/explore/dataset/bilan-electrique-jour/information/
 library(tidyverse)
 library(rdbnomics)
@@ -10,16 +9,15 @@ library(ghibli)
 library(gghighlight)
 library(gridExtra)
 library(RcppRoll)
-source(file = "R/utils.R")
-
+source("R/utils.R")
 fig_path <- "figures/02_electricity-conso-france"
 
 # Access data through DBnomics. Consumption categories:
-#   - pme: Petites et moyennes entreprises (PME) | Small and medium enterprises (SME)
-#   - resid: Redsidential consumption
-#   - hva: High Voltage A
-#   - conso: Total consumption
-#   - temp: Smoothed realized temperature in France
+# - pme: Petites et moyennes entreprises (PME) | Small and medium enterprises (SME)
+# - resid: Redsidential consumption
+# - hva: High Voltage A
+# - conso: Total consumption
+# - temp: Smoothed realized temperature in France
 pme   <- rdb(ids = "ENEDIS/ELECTRICITY_BALANCE/Profiled_SME_SMI_consumption.FRA.PROFILED_SME_SMI_CONSUMPTION.ALL.ALL.D")
 resid <- rdb(ids = "ENEDIS/ELECTRICITY_BALANCE/Profiled_residential_consumption.FRA.PROFILED_RESIDENTIAL_CONSUMPTION.ALL.ALL.D")
 hva   <- rdb(ids = "ENEDIS/ELECTRICITY_BALANCE/Total_HVA_consumption.FRA.TOTAL_HVA_CONSUMPTION.ALL.ALL.D")
@@ -75,11 +73,8 @@ labels_vec <- c(
   )
 
 # Plot total consumption in years 2016 to 2020
-ggplot(
-  data = filter(.data = elec2, var == "Total consumption"), 
-  mapping = aes(x = month_day, y = value, colour = year, group = year)
-  ) +
-  geom_line(linewidth = 1.2) +
+ggplot(filter(elec2, var == "Total consumption"), aes(month_day, value, color = year, group = year)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   scale_y_continuous(labels = scales::number_format(accuracy = 1)) +
   scale_x_discrete(breaks = breaks_vec, labels = labels_vec) +
@@ -87,20 +82,17 @@ ggplot(
   gghighlight(
     year != "average \n2016-2019",
     use_direct_label = FALSE,
-    unhighlighted_params = list(colour = "transparent")
+    unhighlighted_params = list(color = "transparent")
     ) +
   theme(legend.position = c(0.85, 0.75)) +
   labs(title = title_total_vec, subtitle = subtitle_vec)
 
-ggsave(filename = "01_elec-total.png", path = fig_path, width = 8.5, height = 7)
+ggsave("01_elec-total.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()
 
 # Plot total consumption in 2020 and the average 2016-2020
-ggplot(
-  data = filter(elec2, var == "Total consumption"), 
-  mapping = aes(x = month_day, y = value, colour = year, group = year)
-  ) +
-  geom_line(linewidth = 1.2) +
+ggplot(filter(elec2, var == "Total consumption"), aes(month_day, value, color = year, group = year)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   scale_y_continuous(labels = scales::number_format(accuracy = 1)) +
   scale_x_discrete(breaks = breaks_vec, labels = labels_vec) +
@@ -108,12 +100,12 @@ ggplot(
   gghighlight(
     year %in% c("average \n2016-2019","2020"),
     use_direct_label = FALSE,
-    unhighlighted_params = list(colour = "transparent")
+    unhighlighted_params = list(color = "transparent")
     ) +
   theme(legend.position = c(0.88, 0.64)) +
-  labs(title = title_total_vec, subtitle = subtitle_vec,x = NULL, y = NULL)
+  labs(title = title_total_vec, subtitle = subtitle_vec,x = NULL, NULL)
 
-ggsave(filename = "02_elec-total.png", path = fig_path, width = 8.5, height = 7)
+ggsave("02_elec-total.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()
 
 # Data shows under-consumption of electricity in the spring 
@@ -140,11 +132,8 @@ sum <- figures |>
 
 # Plot total consumption and highlight areas where consumption is
 # below or above the average.
-plot_elec_total_3 <- ggplot(
-  data = filter(.data = elec2, var == "Total consumption"), 
-  mapping = aes(x = month_day, y = value, colour = year, group = year)
-  ) +
-  geom_line(linewidth = 1.2) +
+plot_elec_total_3 <- ggplot(filter(elec2, var == "Total consumption"), aes(month_day, value, color = year, group = year)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   scale_y_continuous(labels = scales::number_format(accuracy = 1)) +
   scale_x_discrete(breaks = breaks_vec, labels = labels_vec) +
@@ -152,22 +141,22 @@ plot_elec_total_3 <- ggplot(
   gghighlight(
     year %in% c("average \n2016-2019", "2020"),
     use_direct_label = FALSE,
-    unhighlighted_params = list(colour = "transparent")
+    unhighlighted_params = list(color = "transparent")
     ) +
   geom_ribbon(
-    data = filter(.data = figures, above == FALSE), 
-    mapping = aes(x = month_day, ymin = min, ymax = max, group = section_id),
+    data = filter(figures, above == FALSE), 
+    aes(month_day, ymin = min, ymax = max, group = section_id),
     fill = "#06141FFF", alpha = 0.2, inherit.aes = FALSE
     ) +
   geom_ribbon(
-    data = filter(.data = figures, above == TRUE), 
-    mapping = aes(x = month_day, ymin = min, ymax = max, group = section_id), 
+    data = filter(figures, above == TRUE), 
+    aes(month_day, ymin = min, ymax = max, group = section_id), 
     fill = "#CD4F38FF", alpha = 0.2, inherit.aes = FALSE
     ) +
-  annotate("text", x = "05-10", y = 45, label = "sum of cons. < \naverage = -438\n(Mar.-July)") +
-  annotate("text", x = "09-10", y = 45, label = "sum of cons. > \naverage = 215\n(Aug.-Oct.)") +
+  annotate("text", x = "05-10", 45, label = "sum of cons. < \naverage = -438\n(Mar.-July)") +
+  annotate("text", x = "09-10", 45, label = "sum of cons. > \naverage = 215\n(Aug.-Oct.)") +
   theme(legend.position = c(0.88, 0.64)) +
-  labs(title = title_total_vec, subtitle = subtitle_vec, x = NULL, y = NULL)
+  labs(title = title_total_vec, subtitle = subtitle_vec, x = NULL, NULL)
 
 plot_elec_total_3
 
@@ -204,34 +193,32 @@ moy_spread_aout_oct <- figures |>
   group_by(var) |> 
   summarise(mean = mean(value))  
 
-plot_elec_temp <- ggplot(data = temp2, mapping = aes(x = month_day, y = value, colour = year, group = year))+
-  geom_line(linewidth = 1.2) +
+plot_elec_temp <- ggplot(data = temp2, aes(month_day, value, color = year, group = year))+
+  geom_line(lwd = 1.2) +
   my_theme() +
   scale_x_discrete(breaks = breaks_vec, labels = labels_vec) +
   scale_color_manual(values = ghibli_palette("MononokeMedium")[5:1]) +
-  geom_ribbon(data = filter(.data = figures, above == FALSE), mapping = aes(x = month_day, ymin = min, ymax = max, group = section_id), fill = "#06141FFF", alpha = 0.2, inherit.aes = FALSE) +
-  geom_ribbon(data = filter(.data = figures, above == TRUE), mapping = aes(x = month_day, ymin = min, ymax = max, group = section_id), fill = "#CD4F38FF", alpha = 0.2, inherit.aes = FALSE) +
-  annotate("text", x = "05-10", y = 24, label = "average of temperature deviations \nto the mean (Mar.-July) = +0.4") +
-  annotate("text", x = "10-10", y = 24, label = "average of temperature deviations \nto the mean (Aug-Oct.) = +0.1") +
+  geom_ribbon(data = filter(figures, above == FALSE), aes(month_day, ymin = min, ymax = max, group = section_id), fill = "#06141FFF", alpha = 0.2, inherit.aes = FALSE) +
+  geom_ribbon(data = filter(figures, above == TRUE), aes(month_day, ymin = min, ymax = max, group = section_id), fill = "#CD4F38FF", alpha = 0.2, inherit.aes = FALSE) +
+  annotate("text", x = "05-10", 24, label = "average of temperature deviations \nto the mean (Mar.-July) = +0.4") +
+  annotate("text", x = "10-10", 24, label = "average of temperature deviations \nto the mean (Aug-Oct.) = +0.1") +
   theme(legend.position = "none") +
   labs(
     title = "Average temperature",
     subtitle = "in degrees, 7-day moving average",
-    x = NULL, y = NULL
+    x = NULL, NULL
     )
 
 plot_elec_temp
 
 g <- grid.arrange(plot_elec_total_3, plot_elec_temp, nrow = 2)
 
-ggsave(filename = "03_elec-total.png", plot = g, path = fig_path, width = 8.5, height = 7)
+ggsave("03_elec-total.png", plot = g, path = fig_path, width = 8.5, height = 7)
 graphics.off()
 
 # We then look at electricity consumption by customer category for every year
-ggplot(
-  data = filter(.data = elec2, !var %in% c("Total consumption", "Average temperature")), 
-  mapping = aes(x = month_day, y = value, colour = year, group = year)) +
-  geom_line(linewidth = 1.2) +
+ggplot(filter(elec2, !var %in% c("Total consumption", "Average temperature")), aes(month_day, value, color = year, group = year)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   scale_y_continuous(labels = scales::number_format(accuracy = 1)) +
   scale_x_discrete(breaks = breaks_vec, labels = labels_vec) +
@@ -240,19 +227,17 @@ ggplot(
     year != "average \n2016-2019",
     use_direct_label = FALSE,
     calculate_per_facet = TRUE,
-    unhighlighted_params = list(colour = "transparent")) +
+    unhighlighted_params = list(color = "transparent")) +
   facet_wrap(facets = ~var, ncol = 2, scales = "free_y") +
   theme(legend.position = c(0.75, 0.25), axis.text = element_text(size = 10)) +
-  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, y = NULL)
+  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, NULL)
 
-ggsave(filename = "04_elec-compo.png", path = fig_path, width = 8.5, height = 7)
+ggsave("04_elec-compo.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()
 
 # and for 2020 and the average before
-ggplot(
-  data = filter(.data = elec2,!var %in% c("Total consumption", "Average temperature")), 
-  mapping = aes(x = month_day, y = value, colour = year, group = year)) +
-  geom_line(linewidth = 1.2) +
+ggplot(filter(elec2,!var %in% c("Total consumption", "Average temperature")), aes(month_day, value, color = year, group = year)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   scale_y_continuous(labels = scales::number_format(accuracy = 1)) +
   scale_x_discrete(breaks = breaks_vec, labels = labels_vec) +
@@ -261,12 +246,12 @@ ggplot(
     year %in% c("average \n2016-2019","2020"),
     use_direct_label = FALSE,
     calculate_per_facet = TRUE,
-    unhighlighted_params = list(colour = "transparent"))  +
+    unhighlighted_params = list(color = "transparent"))  +
   facet_wrap(facets = ~ var, ncol = 2, scales = "free_y") +
   theme(legend.position = c(0.78,0.14), axis.text = element_text(size = 10)) +
-  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, y = NULL)
+  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, NULL)
 
-ggsave(filename = "05_elec-compo.png", path = fig_path, width = 8.5, height = 7)
+ggsave("05_elec-compo.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()
 
 # Residential electricity consumption appears to capture a significant 
@@ -337,9 +322,9 @@ ann_text <- tibble(
   )
 
 ggplot(
-  data = filter(.data = elec2, !var %in% c("Total consumption", "Average temperature")), 
-  mapping = aes(x = month_day, y = value, colour = year, group = year)) +
-  geom_line(linewidth = 1.2) +
+  data = filter(elec2, !var %in% c("Total consumption", "Average temperature")), 
+  aes(month_day, value, color = year, group = year)) +
+  geom_line(lwd = 1.2) +
   my_theme() +
   scale_y_continuous(labels = scales::number_format(accuracy = 1)) +
   scale_x_discrete(breaks = breaks_vec, labels = labels_vec) +
@@ -348,38 +333,38 @@ ggplot(
     year %in% c("average \n2016-2019","2020"),
     use_direct_label = FALSE,
     calculate_per_facet = TRUE,
-    unhighlighted_params = list(colour = "transparent")) +
+    unhighlighted_params = list(color = "transparent")) +
   facet_wrap(facets = ~ var, ncol = 2, scales = "free_y") +
   geom_ribbon(
-    data = filter(.data = figures, above == FALSE), 
-    mapping = aes(x = month_day, ymin = min, ymax = max, group = section_id), 
+    data = filter(figures, above == FALSE), 
+    aes(month_day, ymin = min, ymax = max, group = section_id), 
     fill = "#06141FFF", 
     alpha = 0.2, 
     inherit.aes = FALSE
     ) +
   geom_ribbon(
-    data = filter(.data = figures, above == TRUE),
-    mapping = aes(x = month_day, ymin = min, ymax = max, group = section_id), 
+    data = filter(figures, above == TRUE),
+    aes(month_day, ymin = min, ymax = max, group = section_id), 
     fill = "#CD4F38FF", 
     alpha = 0.2, 
     inherit.aes = FALSE
     ) +
   geom_segment(
     data = ann_text,
-    mapping = aes(x = x, xend = xend, y = y, yend = yend),
+    aes(x, xend = xend, y, yend = yend),
     inherit.aes = FALSE,
-    arrow = arrow(angle = 40, length = unit(0.05, "inches")), size = 1, colour = "darkred") +
+    arrow = arrow(angle = 40, length = unit(0.05, "inches")), size = 1, color = "darkred") +
   geom_text(
     data = ann_text,
-    mapping = aes(x = xlab, y = ylab, label = label),
+    aes(xlab, ylab, label = label),
     inherit.aes = FALSE,
     linewidth = 3.6,
-    colour = "darkred"
+    color = "darkred"
     ) +
   theme(legend.position = c(0.78, 0.14), axis.text = element_text(size = 10)) +
-  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, y = NULL)
+  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, NULL)
 
-ggsave(filename = "06_elec-compo.png", path = fig_path, width = 8.5, height = 7)
+ggsave("06_elec-compo.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()
 
 # Large enterprises and SMEs experienced a net decrease 

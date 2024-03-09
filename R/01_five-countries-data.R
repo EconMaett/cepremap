@@ -9,20 +9,18 @@ library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 9, name = "Set1"))
 fig_path  <- "figures/01_five-countries-data"
-last_date <- as.Date("2019-12-31")
+last_date <- as.Date("2023-12-31")
 
 ## Gather databases -----
-# 1. Smets & Wouters (2003) data base
+#   1. Smets & Wouters (2003) data base
+#   2. Financial database for the Euro Area
+#   3. Fiscal data base for the Euro Area
+#   4. International database for the Euro Area
 sw03 <- read_csv("data/EA_SW_rawdata.csv") |>
   filter(period >= "1980-01-01")
 
-# 2. Financial database for the Euro Area
 fipu <- read_csv("data/EA_Fipu_rawdata.csv")
-
-# 3. Fiscal data base for the Euro Area
 fina <- read_csv("data/EA_Finance_rawdata.csv")
-
-# 4. International database for the Euro Area
 open <- read_csv("data/EA_Open_rawdata.csv")
 
 EA_rawdata <- sw03 |>
@@ -35,29 +33,29 @@ EA_rawdata <- sw03 |>
 
 ## FR, DE, IT & ES ----
 ### Data retrieval & seasonal adjustment ----
-#    1 Gross domestic product (GDP)
-#    2 Consumption (C)
-#    3 Investment (I)
-#    4 GDP deflator
-#    5 Compensation of employees (w)
-#    6 Hours worked (h)
-#    7 Investment deflator
-#    8 Loans to non-financial corporations (NFC)
-#    9 Entrepreneurial net worth
-#   10 Short-term interest rate
-#   11 Lending rate
-#   12 Total government expenditure
-#   13 Government consumption
-#   14 Government transfers
-#   15 Government interest payments
-#   16 Government debt
-#   17 World demand
-#   18 Total government revenue
-#   19 Unemployment benefits
-#   20 Nominal effective exchange rate (NEER)
-#   21 Imports
-#   22 Exports
-#   23 Population
+#    1. Gross domestic product (GDP)
+#    2. Consumption (C)
+#    3. Investment (I)
+#    4. GDP deflator
+#    5. Compensation of employees (w)
+#    6. Hours worked (h)
+#    7. Investment deflator
+#    8. Loans to non-financial corporations (NFC)
+#    9. Entrepreneurial net worth
+#   10. Short-term interest rate
+#   11. Lending rate
+#   12. Total government expenditure
+#   13. Government consumption
+#   14. Government transfers
+#   15. Government interest payments
+#   16. Government debt
+#   17. World demand
+#   18. Total government revenue
+#   19. Unemployment benefits
+#   20. Nominal effective exchange rate (NEER)
+#   21. Imports
+#   22. Exports
+#   23. Population
 # Oil prices are assumed to be the same in all countries.
 
 #### Compensation of employees ----
@@ -136,7 +134,6 @@ ggplot(plot_df, aes(period, value, color = Origin)) +
   facet_wrap(~country, ncol = 2, scales = "free_y") +
   my_theme() +
   ggtitle("Government Consumption")
-
 
 ggsave("01_gov_cons_DE-ES-IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
@@ -293,7 +290,6 @@ intpay_recent_it_de_es <- deseasoned_q |>
   filter(Origin == "Adjusted Series") |>
   select(country, -Origin, value, period) |>
   mutate(var = "intpay_recent")
-
 
 #### Total government expenditure ----
 totexp_recent_fr <- rdb("Eurostat", "gov_10q_ggnfa", mask = "Q.MIO_EUR.SCA.S13.TE.FR") |>
@@ -492,6 +488,15 @@ lendingrate_old <- rdb("IMF", "IFS", mask = "Q.IT+DE+FR+ES.FILR_PA") |>
 
 ### World demand ----
 world_demand <- read_csv("data/Foreign_demand.csv") |>
+  mutate(
+    country = case_when(
+      country == "France"  ~ "FR",
+      country == "Germany" ~ "DE",
+      country == "Italy"   ~ "IT",
+      country == "Spain"   ~ "ES",
+      TRUE ~ country
+    )
+  ) |> 
   rename(geo = country)
 
 #### Unemployment benefits ----
@@ -652,7 +657,7 @@ df <- bind_rows(
 # Plot the unchained series
 ggplot(df, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
-  facet_wrap(~var, ncol = 3, scales = "free_y") +
+  facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme() +
   ggtitle("Unchained Series")
 
@@ -2243,10 +2248,10 @@ ggsave("43_depreciation.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 ### The share of capital revenues in GDP ----
-# We proceed in two steps. 
+# Proceed in two steps. 
 
 #### Step 1: Data for Euro Area countries ----
-# We obtain the share of labor compensation in GDP also from the Penn World Table, 
+# Obtain the share of labor compensation in GDP also from the Penn World Table, 
 # for the countries that compose the Euro Area. 
 # We deduce then the share of capital revenues in GDP
 alpha <- df |> 
@@ -2428,7 +2433,7 @@ ea_trade <- df |>
   mutate(
     period = paste(year(period), quarter(period), sep = "-"),
     value,
-    var = if_else(condition = grepl("Import", x= series_name), true = "imports", false = "exports"),
+    var = if_else(grepl("Import", series_name), "imports", "exports"),
     .keep = "none") |> 
   group_by(var, period) |> 
   summarize(value = sum(value)) |> 

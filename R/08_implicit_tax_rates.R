@@ -10,9 +10,8 @@ library(kableExtra)
 library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 9, name = "Set1"))
-
 fig_path <- "figures/08_ITR/"
-
+year_max <- 2023
 list_country <- list(
   "France"    = "FR",
   "Germany"   = "DE",
@@ -20,8 +19,6 @@ list_country <- list(
   "Spain"     = "ES",
   "Euro Area" = "EA19"
   )
-
-year_max <- 2019
 
 ## Implicit tax rate on consumption ----
 # Implicit tax rate (ITR) on consumption are all consumption taxes

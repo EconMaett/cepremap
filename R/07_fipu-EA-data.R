@@ -12,29 +12,28 @@ palette(brewer.pal(n = 9, name = "Set1"))
 fig_path <- "figures/07_EA_Fipu_data/"
 # Build the database following Paredes et al. (2014).
 # The following series are included:
-#    1 Direct taxes
-#    2 Indirect taxes
-#    3 Social security contributions by employees
-#    4 Social security contributions by employers
-#    5 Government consumption
-#    6 Government investments
-#    7 Government transfers
-#    8 Government subsidies
-#    9 Government compensation of employees
-#   10 Unemployment benefits
-#   11 Government debt
-#   12 Interest payments
-#   13 Total revenues
-#   14 Total expenditures.
+#    1. Direct taxes
+#    2. Indirect taxes
+#    3. Social security contributions by employees
+#    4. Social security contributions by employers
+#    5. Government consumption
+#    6. Government investments
+#    7. Government transfers
+#    8. Government subsidies
+#    9. Government compensation of employees
+#   10. Unemployment benefits
+#   11. Government debt
+#   12. Interest payments
+#   13. Total revenues
+#   14. Total expenditures.
 
 ## Historical data ----
 # Replicate the series proposed in Paredes et al. (2014).
-#  Social contribution by contributors starts in 1991.
+# Social contribution by contributors starts in 1991.
 # https://macro.cepremap.fr/article/2019-11/fipu-EA-data/#ppp14
 ppp <- readxl::read_excel(path = "data/PPP_raw.xls", sheet = 1, skip = 1)
 
 ppp <- ppp |> 
-  # mutate(across(.cols = SCR:SCE, .fns = ~ gsub(pattern = "-", replacement = NA, x = .x))) |> 
   mutate(
     period = as.Date(as.yearqtr(`MILL. EURO, RAW DATA, NON-SEAS. ADJUSTED, SMOOTHED ESTIMATES`, "%YQ%q")),
     totexp   = TOE,             # Total expenditures
@@ -69,12 +68,7 @@ prcnt <- ppp |>
 scr_sce_before91 <- ppp |> 
   filter(is.na(scr)) |> 
   select(period, sct, scr, sce) |> 
-  mutate(
-    period = period,
-    scr    = prcnt * sct,
-    sce    = sct - scr,
-    .keep = "none"
-  ) |> 
+  mutate(period, scr = prcnt * sct, sce = sct - scr, .keep = "none") |> 
   pivot_longer(cols = -period, names_to = "var", values_to = "value")
 
 # Add this series to the existing ppp data base
@@ -147,12 +141,12 @@ qsct_a <- qsct |>
   summarise(value_a = sum(value))
 
 qsct <- qsct |> 
-  left_join(qsct_a, by = join_by(year))
+  left_join(qsct_a, join_by(year))
 
 # Convert the data from annual to quarterly
 qsce_uncomplete <- data_1 |> 
   filter(var == "sce") |> 
-  full_join(qsct, by = join_by(year)) |> 
+  full_join(qsct, join_by(year)) |> 
   mutate(
     period = period.y,
     var    = var.x,
@@ -164,7 +158,7 @@ qsce_uncomplete <- data_1 |>
 # Convert data from annual to quarterly
 qscr_uncomplete <- data_1 |> 
   filter(var == "scr") |> 
-  full_join(qsct, by = join_by(year)) |> 
+  full_join(qsct, join_by(year)) |> 
   mutate(
     period = period.y,
     var    = var.x,
@@ -295,12 +289,12 @@ recent_unemp_q <- tibble(
   period = seq(from = min(recent_unemp$period), length.out = nrow(recent_unemp) * 4, by = "quarter"),
   year   = year(period)
   ) |> 
-  left_join(recent_unemp, by = join_by(year)) |> 
+  left_join(recent_unemp, join_by(year)) |> 
   select(-c("period.y", "year")) |> 
   rename(period = period.x)
 
 unemp_q <- recent_unemp_q |> 
-  inner_join(y = socialexp, by = join_by(period)) |> 
+  inner_join(y = socialexp, join_by(period)) |> 
   mutate(
     value = value * ratio,
     var   = "unemp"
@@ -381,7 +375,7 @@ kable(max_date)
 # that what we obtain is consistent with what we expect.
 chained_data <- recent_data %>%
   chain(
-    basis      = ., # Necessitates use of tidyverse pipe 
+    basis      = ., # Necessitates use of tidyverse pipe !
     to_rebase  = filter(ppp, var %in% var_names), 
     date_chain = "2007-01-01"
     ) %>%
@@ -680,7 +674,7 @@ sw03 <- read.csv(file = "data/EA_SW_rawdata.csv") |>
   filter(period >= "1980-01-01")
 
 EA_Fipu_data <- EA_Fipu_rawdata |> 
-  inner_join(y = sw03, by = join_by(period)) |> 
+  inner_join(sw03, join_by(period)) |> 
   mutate(
     period = period,
     pubcons_rpc  = 100 * 1e+6 * pubcons / (defgdp * pop * 1000),

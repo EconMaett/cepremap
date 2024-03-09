@@ -1,6 +1,14 @@
 # 09 - Christiano, Motto and Rostagno (CMR) (2014) database for the United States -----
 # URL: https://macro.cepremap.fr/article/2016-06/cmr14-data/
-
+library(tidyverse)
+library(zoo)
+library(rdbnomics)
+library(fredr)
+library(kableExtra)
+library(RColorBrewer)
+source("R/utils.R")
+palette(brewer.pal(n = 9, name = "Set1"))
+fig_path <- "figures/09_cmr14-data/"
 # Twelve series are needed for the Christiano, Motto and Rostagno (CMR) model:
 #    1. GDP
 #    2. GDP deflator
@@ -23,23 +31,10 @@
 # with the `rdbnomics` R package.
 
 # The Saint Louis Fed's FRED Database is used to retrieve:
-#   - The Wilshire 5000 Total Market Index
-#   - Moody's Seasoned Baa Corporate Bond Yield
-library(tidyverse)
-library(zoo)
-library(rdbnomics)
-library(fredr)
-library(kableExtra)
-source("R/utils.R")
-fig_path <- "figures/09_cmr14-data/"
-# Use Thomas Brand's `FredR` function
-# - GitHub: https://github.com/thomasbrand/fredR
-
-# Use the `fredr` R package instead
-# - Website: https://sboysel.github.io/fredr/
+#   1. The Wilshire 5000 Total Market Index
+#   2. Moody's Seasoned Baa Corporate Bond Yield
 
 ## Raw data from BEA, BIS, BLS and OECD ----
-# These can be retrieved from DBnomics
 df <- rdb(
   ids = c(
     "BEA/NIPA-T10106/A191RX-Q",
@@ -99,10 +94,10 @@ shortrate <- rdb("FED", "H15", mask = "129.FF.O") |>
   )
 
 ### Special case of consumption ----
-# The Bureau of Economic Analysis (BEA) series of private consumption that starts in 2002.
-# Use the series of growth rates available before 2002 to deduce past consumption levels.
-# Aggregate consumption is the sum of non-durable goods and services.
-# Durable goods are associated with investment.
+# - The Bureau of Economic Analysis (BEA) series of private consumption starts in 2002.
+# - Use growth rates available before 2002 to deduce past consumption levels.
+# - Aggregate consumption is the sum of non-durable goods and services.
+# - Durable goods are associated with investment.
 
 # Consumption levels, start in 2007-01-01?
 conso_level <- rdb(
@@ -146,13 +141,13 @@ conso <- conso_rate |>
   bind_rows(conso_level) |> 
   filter(period >= "1980-01-01")
 
-ggplot(data = conso, mapping = aes(x = period, y = value)) +
-  geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  facet_wrap(facets = ~ var_name, ncol = 3, scales = "free_y") +
+ggplot(conso, aes(period, value)) +
+  geom_line(lwd = 1.2, color = blue_obs_macro) +
+  facet_wrap(~ var_name, ncol = 3, scales = "free_y") +
   my_theme() +
   ggtitle("Real Personal Consumption Expenditures")
 
-ggsave(filename = "01_consumption.png", path = fig_path, height = 12, width = 12)
+ggsave("01_consumption.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 # Create variables "var_code" and "var_name"
@@ -201,7 +196,7 @@ rawdata <- bind_rows(conso, df, shortrate, fred_data) |>
   filter(year(period) >= 1980)
 
 var_names <- unique(rawdata$var_name)
-var_names <- gsub(pattern = "Expenditures,.*", replacement = "", x = var_names) |> 
+var_names <- gsub("Expenditures,.*", "", var_names) |> 
   unique()
 
 # Check the last available date for each variable
@@ -220,9 +215,9 @@ rawdata <- rawdata |>
 
 rawdata |> 
   pivot_wider(names_from = var_code, values_from = value) |> 
-  write.csv(file = "data/US_CMR_rawdata.csv", row.names = FALSE)
+  write.csv("data/US_CMR_rawdata.csv", row.names = FALSE)
 
-# Find the raw data here: http://shiny.cepremap.fr/data/US_CMR_rawdata.csv
+# Raw data here: http://shiny.cepremap.fr/data/US_CMR_rawdata.csv
 
 # Normalize the data by population and price level.
 US_CMR_data <- rawdata |> 
@@ -247,8 +242,8 @@ US_CMR_data <- rawdata |>
   )
 
 US_CMR_data |> 
-  mutate(period = gsub(pattern = " ", replacement = "", x = zoo::as.yearqtr(as.Date(period)))) |> 
-  write.csv(file = "data/US_CMR_data.csv", row.names = FALSE)
+  mutate(period = gsub(" ", "", zoo::as.yearqtr(as.Date(period)))) |> 
+  write.csv("data/US_CMR_data.csv", row.names = FALSE)
 
 list_var <- list(
   "Real GDP per capita"            = "gdp_rpc",
@@ -273,15 +268,14 @@ plot_US_CMR_data <- US_CMR_data |>
 
 levels(plot_US_CMR_data$var) <- list_var
 
-ggplot(data = plot_US_CMR_data, mapping = aes(x = period, y = value)) +
-  geom_line(linewidth = 1.2, color = blue_obs_macro) +
-  facet_wrap(facets = ~ var, ncol = 3, scales = "free_y") +
+ggplot(plot_US_CMR_data, aes(period, value)) +
+  geom_line(lwd = 1.2, color = blue_obs_macro) +
+  facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme() +
   ggtitle("CMR data for the US")
 
-ggsave(filename = "02_CMR_US.png", path = fig_path, height = 12, width = 12)
+ggsave("02_CMR_US.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
-# Find the normalized data here: http://shiny.cepremap.fr/data/US_CMR_data.csv
-
+# Normalized data: http://shiny.cepremap.fr/data/US_CMR_data.csv
 # END

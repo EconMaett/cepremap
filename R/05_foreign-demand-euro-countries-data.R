@@ -1,10 +1,8 @@
 # 05 - Foreign Demand for FR, DE, IT and ES ----
 # URL: https://macro.cepremap.fr/article/2020-02/foreign-demand-euro-countries-data/
-# Quarterly foreign demand for France, Germany, Italy and Spain.
-# For each country, we proceed in three steps:
-#   1 Calculate the growth of imports in volume of main trading partners;
-#   2 Calculate the relative importance of each trading partner in EA exports;
-#   3 Sum over the growth rates of imports weighted by the relative importance of each trading partner.
+# 1. Calculate the growth of imports in volume of main trading partners
+# 2. Calculate the relative importance of each trading partner in EA exports
+# 3. Sum over the growth rates of imports weighted by the relative importance of each trading partner.
 library(tidyverse)
 library(zoo)
 library(rdbnomics)
@@ -16,10 +14,8 @@ palette(brewer.pal(n = 9, name = "Set1"))
 fig_path <- "figures/05_foreign-demand-ea/"
 
 ## France ----
-
 ### Main commercial partners imports of goods and services ----
 # (Volume, quarterly, seasonally adjusted)
-
 # Compute the variation of the demand originating from each trading partner of France.
 # Select 18 trading partners that channel 75 percent of French exports.
 
@@ -56,7 +52,6 @@ ggsave("01_imports_levels.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Special case: Algeria, China, Hongkong & Singapore ----
-# Imports from Algeria, China, Hong Kong & Singapore are not available in our dataset.
 # Use the WEO database (IMF) to retrieve this data. 
 # As it is annual, use a spline interpolation to obtain a quarterly series.
 partner_country_spec_iso3 <- c("CHN", "SGP", "HKG", "DZA")
@@ -135,7 +130,7 @@ kable(min_time, format = "html", caption = "min_time") |>
 ### French exports of goods to main commercial partners ----
 # (Values in US Dollars, annual)
 # To compute the relative importance of each trading partner, 
-# we use data series of values of exports of goods (Free on board, in US dollars), 
+# Exports of goods (Free on board, in US dollars), 
 # from DOT database (IMF), for France towards each country.
 
 # Importer countries
@@ -170,10 +165,9 @@ kable(start_sample, format = "html", caption = "min_time") |>
 # We have incomplete series only for Belgium and Russia.
 
 #### Special Case: Belgium, China, Poland, Russia ----
-# We saw in the previous section that we have incomplete series of imports of goods and services 
-# for China, Poland and Russia, and concerning french exports, 
-# we have incomplete series only for Belgium and Russia. 
-# We want to check the growth rates of exports with and without these partners before 1999.
+# Incomplete series of imports for China, Poland and Russia.
+# French exports: Incomplete series only for Belgium and Russia. 
+# Check the growth rates of exports with and without these partners before 1999.
 export_all <- bilatx |>
   group_by(period) |>
   summarize(value = sum(value)) |>
@@ -200,13 +194,12 @@ ggplot(plot_export2, aes(period, value2, color = var)) +
 ggsave("03_exports_FR_gr.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 # Before 1999, both series are very similar. 
-# So we choose to compute weights of 18 commercial partners after 1999 
-# but of only 14 partners before 1999 (without China, Belgium, Poland, and Russia).
+# Compute weights of 18 commercial partners after 1999 
+# but of only 14 partners before 1999 (w/o China, Belgium, Poland, and Russia).
 
 #### Weights of main commercial partners in French exports ----
-# For each commercial partner i, we compute αi, 
-# the share of french exports X among all french exports towards these partners, 
-# at time t.
+# For each commercial partner i, we compute αi, the share of french exports X 
+# among all french exports towards these partners, at time t.
 
 # Sum of French exports by importer
 bilatx <- bilatx |> 
@@ -257,7 +250,7 @@ ggsave("04_importance_FR.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Final index ----
-# We sum over the growth rates of imports in volume  weighted by the relative 
+# Sum over the growth rates of imports in volume  weighted by the relative 
 # importance of each trading partner during the previous year. 
 # Then we create a global index.
 imports_growth_rate <- imports_growth_rate |> 
@@ -299,9 +292,9 @@ plot_wd_FR <- bind_rows(wd_index_growth, mutate(wd_index, var = "1- Level")) |>
 ### Main commercial partners imports of goods and services ----
 # (Volume, quarterly, seasonally adjusted)
 
-# First of all, we need to compute the variation of the demand 
+# Compute the variation of the demand 
 # originating from each trading partner of Germany. 
-# We select 18 trading partners that channel 75 percent of German exports.
+# Select 18 trading partners that channel 75 percent of German exports.
 
 #### General case ----
 # OECD Economic Outlook (EO) database: Imports of goods and services in volume.
@@ -335,9 +328,9 @@ ggsave("05_imports_DE_levels.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Special case: China ----
-# Imports of goods and services from China are not available in our dataset. 
-# We decide to use the WEO database (IMF) to retrieve this data. 
-# As it is annual, we use a spline interpolation to obtain a quarterly series.
+# Imports from China are not available in our dataset. 
+# Use the WEO database (IMF) to retrieve this data. 
+# As it is annual, use a spline interpolation to obtain a quarterly series.
 partner_country_spec_iso3 <- c("CHN")
 url_country_spec_iso3 <- paste0(partner_country_spec_iso3, collapse = "+")
 url_filter <- paste0(url_country_spec_iso3, ".TM_RPCH")
@@ -389,12 +382,12 @@ min_time <- imports_growth_rate |>
 
 kable(min_time, format = "html", caption = "min_time") |>
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), position = "center")
-# We have incomplete series only for China, Czech Republic, Hungary, Poland and Russia.
+# Incomplete series only for China, Czech Republic, Hungary, Poland and Russia.
 
 ### German exports of goods to main commercial partners ----
 # (Values in US Dollars, annual)
-# To compute the relative importance of each trading partner, 
-# we use data series of values of exports of goods (Free on board, in US dollars), 
+# Compute the relative importance of each trading partner, 
+# with exports of goods (Free on board, in US dollars), 
 # from DOT database (IMF), for Germany towards each country.
 
 # Importer countries
@@ -429,11 +422,9 @@ kable(start_sample, format = "html", caption = "min_time") |>
 # We have incomplete series only for Belgium, Czech Republic and Russia.
 
 #### Special case: Belgium, China, Czech Republic, Hungary, Poland, Russia ----
-# We saw in the previous section that we have incomplete series 
-# for China, Czech Republic, Hungary, Poland and Russia, 
-# and concerning German exports, 
-# we have incomplete series only for Belgium, Czech Republic and Russia. 
-# We want to check the growth rates of exports with and without these partners before 1999.
+# Incomplete series for China, Czech Republic, Hungary, Poland and Russia, 
+# German exports: Incomplete series only for Belgium, Czech Republic and Russia. 
+# Check the growth rates of exports with and without these partners before 1999.
 export_all <- bilatx |>
   group_by(period) |>
   summarize(value = sum(value)) |>
@@ -460,12 +451,12 @@ ggplot(plot_export2, aes(period, value2, color = var)) +
 ggsave("07_exports_DE_gr.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 # Before 1999, both series are very similar. 
-# So we choose to compute weights of 18 commercial partners after 1999 
+# Compute weights of 18 commercial partners after 1999 
 # but of only 12 partners before 1999 (without Belgium, China, Czech Republic, Hungary, Poland and Russia).
 
 #### Weights of main commercial partners in German exports ----
-# For each trading partner i, we compute αi, the share of German exports X among all German exports 
-# towards these partners, at time t:
+# For each trading partner i, we compute αi, the share of German exports X 
+# among all German exports towards these partners, at time t:
 
 # Sum of German exports by importer
 bilatx <- bilatx |> 
@@ -511,7 +502,7 @@ alphas <- bind_rows(
 
 ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
-  facet_wrap(~country, ncol = 5, scales = "free_y") +
+  facet_wrap(~ country, ncol = 5, scales = "free_y") +
   my_theme() +
   ggtitle("Relative importance of each trading partner in German exports")
 
@@ -519,7 +510,7 @@ ggsave("08_importance_DE.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Final index ----
-# We sum over the growth rates of imports in volume weighted by the relative importance of each trading partner during the previous year. Then we create a global index.
+# Sum over the growth rates of imports in volume weighted by the relative importance of each trading partner during the previous year. Then we create a global index.
 imports_growth_rate <- imports_growth_rate |> 
   mutate(year = year(period))
 
@@ -547,29 +538,19 @@ wd_index2010 <- wd |>
   ungroup()
 
 wd_index <- wd |>
-  mutate(
-    period,
-    value = 100 * value / wd_index2010$value
-  )
+  mutate(period, value = 100 * value / wd_index2010$value)
 
 wd_index_growth <- wd_index |>
-  mutate(
-    value = value / lag(value, 4) - 1,
-    var = "2- Growth rate"
-  )
+  mutate(value = value / lag(value, 4) - 1, var = "2- Growth rate")
 
-plot_wd_DE <- bind_rows(
-    wd_index_growth,
-    mutate(wd_index, var = "1- Level")
-  ) |>
+plot_wd_DE <- bind_rows(wd_index_growth, mutate(wd_index, var = "1- Level")) |>
   add_column(country = "Germany")
 
 ## Italy ----
 ### Main commercial partners imports of goods and services ----
 # (Volume, quarterly, seasonally adjusted)
-
-# First of all, we need to compute the variation of the demand originating from each trading partner of Italy. 
-# We select 22 trading partners that channel 75 percent of Italian exports.
+# Compute the variation of the demand originating from each trading partner of Italy. 
+# Select 22 trading partners that channel 75 percent of Italian exports.
 
 #### General case ----
 # OECD Economic Outlook (EO): Imports of goods and services in volume.
@@ -603,16 +584,15 @@ ggplot(imports, aes(period, value)) +
     label = "Imports of goods and services", 
     subtitle = "(volume, seasonally adjusted, national currency)"
     )
-
 ggsave("09_imports_IT_levels.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Special case: China, Hong Kong, Romania, Saudi Arabia, UAE ----
-# Imports of goods and services from China, Hong Kong, Romania, Saudi Arabia & United Arab Emirates 
+# Imports from China, Hong Kong, Romania, Saudi Arabia & United Arab Emirates 
 # are not available in our dataset. 
-# We decide to use the WEO database (IMF) to retrieve this data 
+# Use the WEO database (IMF) to retrieve this data 
 # (except for Romania whose series have extreme values). 
-# As it is annual, we use a spline interpolation to obtain a quarterly series.
+# As it is annual, use a spline interpolation to obtain a quarterly series.
 partner_country_spec_iso3 <- c("CHN", "HKG", "ARE", "SAU")
 url_country_spec_iso3 <- paste0(partner_country_spec_iso3, collapse = "+")
 url_filter <- paste0(url_country_spec_iso3, ".TM_RPCH")
@@ -683,12 +663,12 @@ min_time <- imports_growth_rate |>
 
 kable(min_time, format = "html", caption = "min_time") |>
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), position = "center")
-# We have incomplete series only for China, Czech Republic, Hungary, Poland, Romania and Russia.
+# Incomplete series only for China, Czech Republic, Hungary, Poland, Romania and Russia.
 
 ### Italian exports of goods to main commercial partners ----
 # (Values in US Dollars, annual)
-# To compute the relative importance of each trading partner, 
-# we use data series of values of exports of goods (Free on board, in US dollars), 
+# Compute the relative importance of each trading partner, 
+# with exports of goods (Free on board, in US dollars), 
 # from DOT database (IMF), for Italy towards each country.
 
 # Importer countries
@@ -724,11 +704,11 @@ kable(start_sample, format = "html", caption = "min_time") |>
 # We have incomplete series only for Belgium, Czech Republic, and Russia.
 
 #### Special case: Belgium, China, Czech Republic, Hungary, Poland, Romania, Russia ----
-# We saw in the previous section that we have incomplete series of imports of goods and services 
+# Incomplete series of imports of goods and services 
 # for China, Czech Republic, Hungary, Poland, Romania and Russia, 
-# and concerning Italian exports, we have incomplete series only 
+# Italian exports have incomplete series only 
 # for Belgium, Czech Republic, and Russia. 
-# We want to check the growth rates of exports with and without these partners before 1999.
+# Check the growth rates of exports with and without these partners before 1999.
 export_all <- bilatx |>
   group_by(period) |>
   summarize(value = sum(value)) |>
@@ -757,8 +737,8 @@ graphics.off()
 # Before 1999, both series are very similar. So we choose to compute weights of 22 commercial partners after 1999 but of only 15 partners before 1999 (without Belgium, China, Czech Republic, Hungary, Poland, Romania and Russia).
 
 #### Weights of main commercial partners in Italian exports ----
-# For each commercial partner i, we compute αi, 
-# the share of Italian exports X among all Italian exports towards these partners, at time t:
+# For each commercial partner i, we compute αi, the share of Italian exports X 
+# among all Italian exports towards these partners, at time t:
 
 # Sum of Italian exports by importer
 bilatx <- bilatx |> 
@@ -813,7 +793,7 @@ ggsave("12_importance_IT.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Final index ----
-# We sum over the growth rates of imports in volume weighted by the relative importance of each trading partner during the previous year. 
+# Sum over the growth rates of imports in volume weighted by the relative importance of each trading partner during the previous year. 
 # Then we create a global index.
 imports_growth_rate <- imports_growth_rate |> 
   mutate(year = year(period))
@@ -842,10 +822,7 @@ wd_index2010 <- wd |>
   ungroup()
 
 wd_index <- wd |>
-  mutate(
-    period,
-    value = 100 * value / wd_index2010$value
-  )
+  mutate(period, value = 100 * value / wd_index2010$value)
 
 wd_index_growth <- wd_index |>
   mutate(
@@ -860,13 +837,10 @@ plot_wd_IT <- bind_rows(
   add_column(country = "Italy")
 
 ## Spain ----
-
 ### Imports of goods and services of Spain's main commercial partners ----
 # (Volume, quarterly, seasonally adjusted)
-
-# First of all, we need to compute the variation of the demand originating from each trading partner of Spain. 
-# We select 18 trading partners that channel 75 percent of Spanish exports.
-
+# Compute the variation of the demand originating from each trading partner of Spain. 
+# Select 18 trading partners that channel 75 percent of Spanish exports.
 #### General case ----
 # OECD Economic Outlook (OE): Imports of goods and services in volume.
 partner_country_iso3 <- c(
@@ -899,10 +873,10 @@ ggsave("13_imports_ES_levels.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Special case: Algeria, China, Morocco, Saudi Arabia ----
-# Data series of imports of goods and services from 
+# Imports of goods and services from 
 # Algeria, China, Morocco & Saudi Arabia are not available in our dataset. 
-# We decide to use the WEO database (IMF) to retrieve this data. 
-# As it is annual, we use a spline interpolation to obtain quarterly series.
+# Use the WEO database (IMF) to retrieve this data. 
+# As it is annual, use a spline interpolation to obtain quarterly series.
 partner_country_spec_iso3 <- c("DZA", "CHN", "MAR", "SAU")
 url_country_spec_iso3 <- paste0(partner_country_spec_iso3, collapse = "+")
 url_filter <- paste0(url_country_spec_iso3, ".TM_RPCH")
@@ -970,12 +944,12 @@ min_time <- imports_growth_rate |>
 
 kable(min_time, format = "html", caption = "min_time") |>
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), position = "center")
-# We have incomplete series only for Brazil, China, and Poland.
+# Incomplete series only for Brazil, China, and Poland.
 
 ### Spanish exports of goods to main commercial partners ----
 # (Values in US Dollars, annual)
-# To compute the relative importance of each trading partner, 
-# we use data series of values of exports of goods (Free on board, in US dollars), 
+# Compute the relative importance of each trading partner, 
+# with exports of goods (Free on board, in US dollars), 
 # from DOT database (IMF), for Spain towards each country.
 
 # Importer countries
@@ -1004,10 +978,10 @@ kable(start_sample, format = "html", caption = "min_time") |>
 # We have incomplete series only for Belgium.
 
 #### Special case: Belgium, Brazil, China, Poland ----
-# We saw in the previous section that we have incomplete series of imports of goods and services 
-# for Brazil, China, and Poland, and concerning Spanish exports, 
-# we have incomplete series only for Belgium. 
-# We want to check the growth rates of exports with and without these partners before 1997.
+# Incomplete series of imports of goods and services 
+# for Brazil, China, and Poland,
+# Spanish exports: Incomplete series only for Belgium. 
+# Check the growth rates of exports with and without these partners before 1997.
 export_all <- bilatx |>
   group_by(period) |>
   summarize(value = sum(value)) |>
@@ -1036,8 +1010,8 @@ graphics.off()
 # Before 1999, both series are very similar. So we choose to compute weights of 18 commercial partners after 1997 but of only 14 partners before 1997 (without Belgium, Brazil, China and Poland).
 
 #### Weights of main commercial partners in Spanish exports ----
-# For each commercial partner i, we compute αi, 
-# the share of Spanish exports X among all Spanish exports towards these partners, at time t:
+# For each commercial partner i, we compute αi, the share of Spanish exports X 
+# among all Spanish exports towards these partners, at time t:
 
 # Sum of Spanish exports by importer
 bilatx <- bilatx |> 
@@ -1091,7 +1065,7 @@ ggsave("16_importance_ES.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 #### Final index ----
-# We sum over the growth rates of imports in volume weighted by the relative importance of each trading partner during the previous year. 
+# Sum over the growth rates of imports in volume weighted by the relative importance of each trading partner during the previous year. 
 # Then we create a global index.
 imports_growth_rate <- imports_growth_rate |> 
   mutate(year = year(period))
@@ -1120,34 +1094,20 @@ wd_index2010 <- wd |>
   ungroup()
 
 wd_index <- wd |>
-  mutate(
-    period,
-    value = 100 * value / wd_index2010$value
-  )
+  mutate(period, value = 100 * value / wd_index2010$value)
 
 wd_index_growth <- wd_index |>
-  mutate(
-    value = value / lag(value, 4) - 1,
-    var = "2- Growth rate"
-  )
+  mutate(value = value / lag(value, 4) - 1, var = "2- Growth rate")
 
-plot_wd_ES <- bind_rows(
-  wd_index_growth,
-  mutate(wd_index, var = "1- Level")
-  ) |>
+plot_wd_ES <- bind_rows(wd_index_growth, mutate(wd_index, var = "1- Level")) |>
   add_column(country = "Spain")
 
 ## Foreign Demand ----
-foreign_demand <- bind_rows(
-  plot_wd_FR,
-  plot_wd_DE,
-  plot_wd_IT,
-  plot_wd_ES
-  )
+foreign_demand <- bind_rows(plot_wd_FR, plot_wd_DE, plot_wd_IT, plot_wd_ES)
 
 ggplot(foreign_demand, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
-  facet_wrap(~var, scales = "free_y", ncol = 1) +
+  facet_wrap(~ var, scales = "free_y", ncol = 1) +
   my_theme() +
   ggtitle(expression(atop("Foreign demand for France, Germany, Italy and Spain", atop(italic("base 100 = 2010"), ""))))
 
@@ -1160,5 +1120,5 @@ world_demand <- foreign_demand |>
   add_column(var = "world_demand")
 
 write.csv(world_demand, file = "data/Foreign_demand.csv", row.names = FALSE)
-# Find the data here: href="http://shiny.cepremap.fr/data/Foreign_demand.csv
+# Ready data: href="http://shiny.cepremap.fr/data/Foreign_demand.csv
 # END
