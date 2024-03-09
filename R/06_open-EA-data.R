@@ -6,7 +6,7 @@ library(rdbnomics)
 library(kableExtra)
 library(RColorBrewer)
 source("R/utils.R")
-palette(brewer.pal(n = 9, name = "Set1"))
+palette(brewer.pal(n = 9, name = "Dark2"))
 fig_path <- "figures/06_open-EA-data/"
 # International quarterly data base for the Euro area:
 #   - Foreign demand (without trade between Euro area countries)
@@ -53,7 +53,7 @@ ggplot(imports, aes(period, value)) +
     subtitle = "(volume, seasonally adjusted, national currency)"
     )
 
-ggsave("01_imports.png", path = fig_path, height = 12, width = 12)
+ggsave("01_imports.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### China special case ----
@@ -98,7 +98,7 @@ ggplot(imports_growth_rate, aes(period, value)) +
     subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)"
   )
 
-ggsave("02_imports_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("02_imports_gr.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 min_time <- imports_growth_rate |> 
@@ -198,7 +198,7 @@ ggplot(plot_export, aes(period, value, color = var)) +
   my_theme() +
   ggtitle("Extra-Eurozone exports, with / without Eastern countries")
 
-ggsave("03_exports-east.png", path = fig_path, height = 12, width = 12)
+ggsave("03_exports-east.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 # Before 2003, the series are very similar.
@@ -233,7 +233,7 @@ ggplot(plot_export2, aes(period, value2, color = var)) +
   my_theme() +
   ggtitle("Growth rate of extra-area exports, with 10 and 14 partners")
 
-ggsave("04_imports-brics.png", path = fig_path, height = 12, width = 12)
+ggsave("04_imports-brics.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### Weights of the main commercial partners in Eurozone exports ----
@@ -287,7 +287,7 @@ ggplot(alphas, aes(period, alpha)) +
   my_theme() +
   ggtitle("Share of Eurozone exports among all Eurozone exports")
 
-ggsave("05_exports-ea.png", path = fig_path, height = 12, width = 12)
+ggsave("05_exports-ea.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ### Final index ----
@@ -331,7 +331,7 @@ ggplot(plot_wd, aes(period, value)) +
   my_theme() +
   ggtitle("Foreign demand for the Eurozone, base 100 = 2010")
 
-ggsave("06_foreign-demand-ea.png", path = fig_path, height = 12, width = 12)
+ggsave("06_foreign-demand-ea.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ## Foreign interest rate ----
@@ -351,7 +351,7 @@ ggplot(shortrate, aes(period, value)) +
   my_theme() +
   ggtitle("Foreign interest rate")
 
-ggsave("07_foreign-interest-rate.png", path = fig_path, height = 12, width = 12)
+ggsave("07_foreign-interest-rate.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ## Oil prices ----
@@ -367,7 +367,7 @@ ggplot(oil_prices, aes(period, value)) +
   my_theme() +
   ggtitle("Crude oil prices")
 
-ggsave("08_oil-price.png", path = fig_path, height = 12, width = 12)
+ggsave("08_oil-price.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ## Real effective exchange rate ----
@@ -388,7 +388,7 @@ ggplot(reer, aes(period, value)) +
   my_theme() +
   ggtitle("Real Effective Exchange Rate")
 
-ggsave("09_reer.png", path = fig_path, height = 12, width = 12)
+ggsave("09_reer.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ## Extra Euro area imports and exports ----
@@ -413,7 +413,7 @@ ggplot(trade, aes(period, value)) +
   my_theme() +
   ggtitle("Extra euro area imports / exports, in volume, seasonally adjusted")
 
-ggsave("10_ea-imports-exports.png", path = fig_path, height = 12, width = 12)
+ggsave("10_ea-imports-exports.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ## Final international database for the Euro area ----
@@ -487,7 +487,7 @@ ggplot(plot_EA_Open_data, aes(period, value)) +
   my_theme() +
   ggtitle("International database for the Euro Area")
 
-ggsave("11_final.png", path = fig_path, height = 12, width = 12)
+ggsave("11_final.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 # END

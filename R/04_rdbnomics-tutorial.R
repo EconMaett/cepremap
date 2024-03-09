@@ -5,7 +5,7 @@ library(tidyverse)
 library(kableExtra)
 library(RColorBrewer)
 source("R/utils.R")
-palette(brewer.pal(n = 9, name = "Set1"))
+palette(brewer.pal(n = 9, name = "Dark2"))
 fig_path <- "figures/04_rdbnomics-tutorial/"
 # DBnomics, the world's economic database: https://db.nomics.world/
 # The `rdbnomics` R package is available on:
@@ -64,7 +64,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("01_AMECO_ZUTN_EA19.png", path = fig_path, height = 8, width = 12)
+ggsave("01_AMECO_ZUTN_EA19.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ### Fetch two series -----
@@ -83,7 +83,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("02_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 8, width = 12)
+ggsave("02_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ### Fetch two series from different datasets and different providers -----
@@ -100,7 +100,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("03_AMECO_ZUTN_EA19-Eurostat_une.png", path = fig_path, height = 8, width = 12)
+ggsave("03_AMECO_ZUTN_EA19-Eurostat_une.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ## Fetch time series by `mask` ----
@@ -119,7 +119,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("04_IMF_BOP_FR.png", path = fig_path, height = 8, width = 12)
+ggsave("04_IMF_BOP_FR.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ### Fetch two series ----
@@ -139,7 +139,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("05_IMF_BOP_FR-DE.png", path = fig_path, height = 8, width = 12)
+ggsave("05_IMF_BOP_FR-DE.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ### Fetch all series along one dimension ----
@@ -203,7 +203,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("06_AMECO_ZUTN_EA19.png", path = fig_path, height = 8, width = 12)
+ggsave("06_AMECO_ZUTN_EA19.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ### Fetch two values of one dimension of ZUTN from AMECO ----
@@ -230,7 +230,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("07_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 8, width = 12)
+ggsave("07_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ### Fetch several values of several dimensions from Doing Business (DB) from World Bank ----
@@ -257,7 +257,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("08_IMF_WEO_FR.png", path = fig_path, height = 8, width = 12)
+ggsave("08_IMF_WEO_FR.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ### Fetch series of dataset "WEO by countries" (WEO) from provider IMF ----
@@ -294,7 +294,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("09_SECO_GDP_GR.png", path = fig_path, height = 8, width = 12)
+ggsave("09_SECO_GDP_GR.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ## Fetch time series from the cart ----
@@ -334,14 +334,14 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("10_BOE_RPMTDDC-RPMTBVE.png", path = fig_path, height = 8, width = 12)
+ggsave("10_BOE_RPMTDDC-RPMTBVE.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ## Fetch the available datasets from a provider ---
 # When fetching series from DBnomics at https://db.nomics.world/
 # you need to give a provider of a dataset before specifying the correct dimensions.
-# With the function `dbnomics::rdb_datasets()`, you can download the 
-# list of all available datasets for a provider.
+# Download the list of all available datasets for a provider.
+# with the function `dbnomics::rdb_datasets()`
 
 # To fetch the IMF datasets, use
 DT <- rdb_datasets(provider_code = "IMF")
@@ -350,14 +350,11 @@ display_table(DT[[1]])
 # The function returns a named list (the list name is IMF) with
 # one element that is of class `data.table`.
 
-# Use the same function if you want to fetch the available
-# datasets of two providers
+# The same function can fetch the available datasets of two providers
 DT <- rdb_datasets(provider_code = c("IMF", "BDF"))
 DT <- sapply(X = DT, FUN = function(y) { paste0(": ", nrow(y)) })
 DT <- paste0("Number of datasets for ", names(DT), " ", unname(DT))
 cat(DT, sep = "\n")
-# Number of datasets for IMF : 100
-# Number of datasets for BDF : 49
 
 # In the event that you only request the datasets from a single provider,
 # define `simplify = TRUE` to receive the result as 
@@ -369,9 +366,6 @@ DT |> display_table()
 # can be appreciated by calling `rdbnomics::rdb_datasets()`
 # with the argument `provider_code` set to `NULL` (default)
 DT <- rdb_datasets(provider_code = NULL)
-# Note: This takes a second to run.
-class(DT) # "list"
-names(DT) 
 
 DT <- sapply(X = DT, FUN = function(y) { nrow(y) })
 DT <- tibble(name = names(DT), n = unname(DT))
@@ -493,57 +487,52 @@ names(curl::curl_options())
 # https://curl.haxx.se/libcurl/c/curl_easy_setopt.html
 
 # Once they are chosen, you define the curl object as follows:
-h <- list(
-  proxy = "<proxy>",
-  proxyport = ...,
-  proxyusername = "<username>",
-  proxypassword = "<password>"
-)
+if (FALSE) {
+  #### Set the connection up for a session ----
+  # The `curl` connection can be set up for a specific session only
+  # by modifying the package option
+  options(rdbnomics.curl_config = h)
+  
+  # When fetching the data, the following command is executed internally
+  hndl <- curl::new_handle()
+  curl::handle_setopt(handle = hndl, .list = getOption("rdbnomics.curl_config"))
+  curl::curl_fetch_memory(url = ..., handle = hndl)
+  
+  # After configuration, just use the standard functions of
+  # `rdbnomics` such as
+  df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN")
+  
+  # This option of the package can be disabled with:
+  options(rdbnomics.curl = NULL)
+  
+  #### Use the connection only for a function call ----
+  # If a complete configuration is not needed but just
+  # an "on the fly" execution, then use the argument 
+  # `curl_config` inside of the function `rdbnomics::rdb()`
+  df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN", curl_config = h)
+  
+  ### Use the default R internet connection ----
+  # To retrieve the data with the default R internet connection,
+  # `rdbnomics` will use the `base::readLines()` function. 
+  
+  #### Set the connection up for a session ----
+  # To activate this feature for a single session only, enable
+  # the package option `rdbnomics.use_readLines`
+  options(rdbnomics.use_readLines = TRUE)
+  
+  # Then use standard functions
+  df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN")
+  
+  # And disable this configuration with
+  options(rdbnomics.use_readLines = FALSE)
+  
+  
+  #### Use the connection only for a function call ----
+  # If you just want to do this once, use the argument `use_readLiens`
+  # inside the function `rdbnomics::rdb()`
+  df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN", use_readLines = TRUE)
+}
 
-
-#### Set the connection up for a session ----
-# The `curl` connection can be set up for a specific session only
-# by modifying the package option
-options(rdbnomics.curl_config = h)
-
-# When fetching the data, the following command is executed internally
-hndl <- curl::new_handle()
-curl::handle_setopt(handle = hndl, .list = getOption("rdbnomics.curl_config"))
-curl::curl_fetch_memory(url = ..., handle = hndl)
-
-# After configuration, just use the standard functions of
-# `rdbnomics` such as
-df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN")
-
-# This option of the package can be disabled with:
-options(rdbnomics.curl = NULL)
-
-#### Use the connection only for a function call ----
-# If a complete configuration is not needed but just
-# an "on the fly" execution, then use the argument 
-# `curl_config` inside of the function `rdbnomics::rdb()`
-df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN", curl_config = h)
-
-### Use the default R internet connection ----
-# To retrieve the data with the default R internet connection,
-# `rdbnomics` will use the `base::readLines()` function. 
-
-#### Set the connection up for a session ----
-# To activate this feature for a single session only, enable
-# the package option `rdbnomics.use_readLines`
-options(rdbnomics.use_readLines = TRUE)
-
-# Then use standard functions
-df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN")
-
-# And disable this configuration with
-options(rdbnomics.use_readLines = FALSE)
-
-
-#### Use the connection only for a function call ----
-# If you just want to do this once, use the argument `use_readLiens`
-# inside the function `rdbnomics::rdb()`
-df1 <- rdb(ids = "AMECO/ZUTN/EA19.1.0.0.0.ZUTN", use_readLines = TRUE)
 
 ## Transform time series with filters ----
 # The `rdbnomics` R package interacts with the Time Series Editor of the
@@ -617,6 +606,6 @@ ggplot(df[!is.na(value)], aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("11_AMECO_ZUTN_EA19-DNK_filtered.png", path = fig_path, height = 8, width = 12)
+ggsave("11_AMECO_ZUTN_EA19-DNK_filtered.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 # END

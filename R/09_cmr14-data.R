@@ -7,7 +7,7 @@ library(fredr)
 library(kableExtra)
 library(RColorBrewer)
 source("R/utils.R")
-palette(brewer.pal(n = 9, name = "Set1"))
+palette(brewer.pal(n = 9, name = "Dark2"))
 fig_path <- "figures/09_cmr14-data/"
 # Twelve series are needed for the Christiano, Motto and Rostagno (CMR) model:
 #    1. GDP
@@ -147,7 +147,7 @@ ggplot(conso, aes(period, value)) +
   my_theme() +
   ggtitle("Real Personal Consumption Expenditures")
 
-ggsave("01_consumption.png", path = fig_path, height = 12, width = 12)
+ggsave("01_consumption.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 # Create variables "var_code" and "var_name"
@@ -274,7 +274,7 @@ ggplot(plot_US_CMR_data, aes(period, value)) +
   my_theme() +
   ggtitle("CMR data for the US")
 
-ggsave("02_CMR_US.png", path = fig_path, height = 12, width = 12)
+ggsave("02_CMR_US.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 # Normalized data: http://shiny.cepremap.fr/data/US_CMR_data.csv

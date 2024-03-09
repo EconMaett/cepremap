@@ -8,7 +8,7 @@ library(rdbnomics)
 library(kableExtra)
 library(RColorBrewer)
 source("R/utils.R")
-palette(brewer.pal(n = 9, name = "Set1"))
+palette(brewer.pal(n = 9, name = "Dark2"))
 fig_path <- "figures/10_cmr14-EA-data/"
 # Four financial time series are used in Christiano et al. (2014):
 #   1. Loans to non-financial corporations (NFC)
@@ -98,7 +98,7 @@ ggplot(bind_rows(loans_nfc_countries, loans_nfc_EA), aes(period, value)) +
   my_theme() +
   ggtitle("Loans to non-financial corporations (billions of euro)")
 
-ggsave("01_BIS_credit_nfc.png", path = fig_path, height = 12, width = 12)
+ggsave("01_BIS_credit_nfc.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 loans_hh_countries <- loans_hh |> 
@@ -115,7 +115,7 @@ ggplot(bind_rows(loans_hh_countries, loans_hh_EA), aes(period, value)) +
   my_theme() +
   ggtitle("Loans to households and NPISHs (billions of euro)")
 
-ggsave("02_BIS_credit_hh.png", path = fig_path, height = 12, width = 12)
+ggsave("02_BIS_credit_hh.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 # Raw sum over the available countries & chained to the EA series.
@@ -161,7 +161,7 @@ ggplot(bind_rows(loans_nfc_sumAll, loans_nfc_EA, loans_nfc_chained), aes(period,
   my_theme() +
   ggtitle("Loans to non-financial corporations (billions of euro) [1]")
 
-ggsave("03_BIS_credit_nfc_chained.png", path = fig_path, height = 12, width = 12)
+ggsave("03_BIS_credit_nfc_chained.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 print(varname_nfc)
@@ -208,7 +208,7 @@ ggplot(bind_rows(loans_hh_sumAll, loans_hh_EA, loans_hh_chained), aes(period, va
   my_theme() +
   ggtitle("Loans to households and NPISHs (billions of euro) [1]")
 
-ggsave("04_BIS_credit_hh_chained.png", path = fig_path, height = 12, width = 12)
+ggsave("04_BIS_credit_hh_chained.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 print(varname_hh)
@@ -286,7 +286,7 @@ ggplot(dataplot, aes(period, value, color = var)) +
   my_theme() +
   ggtitle("Bank lending rate (%)")
 
-ggsave("05_ECB_lendingrates.png", path = fig_path, height = 12, width = 12)
+ggsave("05_ECB_lendingrates.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 ## Chain historical and recent data ----
@@ -346,7 +346,7 @@ ggplot(dataplot, aes(period, value, color = ind)) +
   my_theme() +
   ggtitle("Long-term interest rate (%)")
 
-ggsave("06_ECB_lendingrates_longterm.png", path = fig_path, height = 12, width = 12)
+ggsave("06_ECB_lendingrates_longterm.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 longrate <- chain(
@@ -373,7 +373,7 @@ ggplot(networth, aes(period, value)) +
   my_theme() +
   ggtitle("Entrepreneurial net worth (index)")
 
-ggsave("07_ECB_entrepreneurialnetworth.png", path = fig_path, height = 12, width = 12)
+ggsave("07_ECB_entrepreneurialnetworth.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 # The Dow Jones index from the ECB is described as
@@ -393,7 +393,7 @@ ggplot(houseprice, aes(period, value)) +
   my_theme() +
   ggtitle("House prices (index)")
 
-ggsave("08_ECB_houseprices.png", path = fig_path, height = 12, width = 12)
+ggsave("08_ECB_houseprices.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 # House prices come from the BIS and are described as
@@ -440,7 +440,7 @@ ggplot(plot_df, aes(period, value)) +
   facet_wrap(~ var, scales = "free_y", ncol = 3) +
   my_theme()
   
-ggsave("09_final.png", path = fig_path, height = 12, width = 12)
+ggsave("09_final.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 # Six final series: http://shiny.cepremap.fr/data/EA_Finance_rawdata.csv
@@ -526,7 +526,7 @@ ggplot(plot_EA_CMR_data, aes(period, value)) +
   my_theme() +
   ggtitle("CMR data for the Euro area")
 
-ggsave("10_CMR_EA.png", path = fig_path, height = 12, width = 12)
+ggsave("10_CMR_EA.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 # Normalized data: http://shiny.cepremap.fr/data/EA_CMR_data.csv

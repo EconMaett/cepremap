@@ -1,8 +1,8 @@
 # 05 - Foreign Demand for FR, DE, IT and ES ----
 # URL: https://macro.cepremap.fr/article/2020-02/foreign-demand-euro-countries-data/
-# 1. Calculate the growth of imports in volume of main trading partners
-# 2. Calculate the relative importance of each trading partner in EA exports
-# 3. Sum over the growth rates of imports weighted by the relative importance of each trading partner.
+# 1. Growth of imports in volume of main trading partners
+# 2. Importance of each trading partner in EA exports
+# 3. Sum over growth rates of imports weighted by the relative importance of each trading partner.
 library(tidyverse)
 library(zoo)
 library(rdbnomics)
@@ -10,7 +10,7 @@ library(seasonal)
 library(kableExtra)
 library(RColorBrewer)
 source("R/utils.R")
-palette(brewer.pal(n = 9, name = "Set1"))
+palette(brewer.pal(n = 9, name = "Dark2"))
 fig_path <- "figures/05_foreign-demand-ea/"
 
 ## France ----
@@ -48,7 +48,7 @@ ggplot(imports, aes(period, value)) +
     label = "Imports of goods and services",
     subtitle = "(volume, seasonally adjusted, national currency)"
   )
-ggsave("01_imports_levels.png", path = fig_path, height = 12, width = 12)
+ggsave("01_imports_levels.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### Special case: Algeria, China, Hongkong & Singapore ----
@@ -115,7 +115,7 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
     subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)"
     )
 
-ggsave("02_imports_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("02_imports_gr.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 min_time <- imports_growth_rate |>
@@ -191,7 +191,7 @@ ggplot(plot_export2, aes(period, value2, color = var)) +
   my_theme() +
   ggtitle("Growth rate of exports, with 14 and 18 partners")
 
-ggsave("03_exports_FR_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("03_exports_FR_gr.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 # Before 1999, both series are very similar. 
 # Compute weights of 18 commercial partners after 1999 
@@ -246,7 +246,7 @@ ggplot(alphas, aes(period, alpha)) +
   my_theme() +
   ggtitle("Relative importance of each trading partner in French exports")
 
-ggsave("04_importance_FR.png", path = fig_path, height = 12, width = 12)
+ggsave("04_importance_FR.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### Final index ----
@@ -324,7 +324,7 @@ ggplot(imports, aes(period, value)) +
   my_theme() +
   ggtitle("Imports of goods and services", subtitle = "(volume, seasonally adjusted, national currency)")
 
-ggsave("05_imports_DE_levels.png", path = fig_path, height = 12, width = 12)
+ggsave("05_imports_DE_levels.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### Special case: China ----
@@ -372,7 +372,7 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
   my_theme() +
   ggtitle("Growth rates of imports of goods and services", subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)")
 
-ggsave("06_imports_DE_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("06_imports_DE_gr.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 min_time <- imports_growth_rate |>
@@ -448,7 +448,7 @@ ggplot(plot_export2, aes(period, value2, color = var)) +
   my_theme() +
   ggtitle("Growth rate of exports, with 12 and 18 partners")
 
-ggsave("07_exports_DE_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("07_exports_DE_gr.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 # Before 1999, both series are very similar. 
 # Compute weights of 18 commercial partners after 1999 
@@ -506,7 +506,7 @@ ggplot(alphas, aes(period, alpha)) +
   my_theme() +
   ggtitle("Relative importance of each trading partner in German exports")
 
-ggsave("08_importance_DE.png", path = fig_path, height = 12, width = 12)
+ggsave("08_importance_DE.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### Final index ----
@@ -584,7 +584,7 @@ ggplot(imports, aes(period, value)) +
     label = "Imports of goods and services", 
     subtitle = "(volume, seasonally adjusted, national currency)"
     )
-ggsave("09_imports_IT_levels.png", path = fig_path, height = 12, width = 12)
+ggsave("09_imports_IT_levels.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### Special case: China, Hong Kong, Romania, Saudi Arabia, UAE ----
@@ -653,7 +653,7 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
   my_theme() +
   ggtitle("Growth rates of imports of goods and services", subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)")
 
-ggsave("10_imports_IT_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("10_imports_IT_gr.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 min_time <- imports_growth_rate |>
@@ -732,7 +732,7 @@ ggplot(plot_export2, aes(period, value2, color = var)) +
   my_theme() +
   ggtitle("Growth rate of exports, with 15 and 22 partners")
 
-ggsave("11_exports_IT_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("11_exports_IT_gr.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 # Before 1999, both series are very similar. So we choose to compute weights of 22 commercial partners after 1999 but of only 15 partners before 1999 (without Belgium, China, Czech Republic, Hungary, Poland, Romania and Russia).
 
@@ -789,7 +789,7 @@ ggplot(alphas, aes(period, alpha)) +
   my_theme() +
   ggtitle("Relative importance of each trading partner in Italian exports")
 
-ggsave("12_importance_IT.png", path = fig_path, height = 12, width = 12)
+ggsave("12_importance_IT.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### Final index ----
@@ -869,7 +869,7 @@ ggplot(imports, aes(period, value)) +
   my_theme() +
   ggtitle("Imports of goods and services", subtitle = "(volume, seasonally adjusted, national currency)")
 
-ggsave("13_imports_ES_levels.png", path = fig_path, height = 12, width = 12)
+ggsave("13_imports_ES_levels.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### Special case: Algeria, China, Morocco, Saudi Arabia ----
@@ -934,7 +934,7 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
   my_theme() +
   ggtitle("Growth rates of imports of goods and services", subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)")
 
-ggsave("14_imports_ES_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("14_imports_ES_gr.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 min_time <- imports_growth_rate |>
@@ -1005,7 +1005,7 @@ ggplot(plot_export2, aes(period, value2, color = var)) +
   my_theme() +
   ggtitle("Growth rate of exports, with 14 and 18 partners")
 
-ggsave("15_exports_ES_gr.png", path = fig_path, height = 12, width = 12)
+ggsave("15_exports_ES_gr.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 # Before 1999, both series are very similar. So we choose to compute weights of 18 commercial partners after 1997 but of only 14 partners before 1997 (without Belgium, Brazil, China and Poland).
 
@@ -1061,7 +1061,7 @@ ggplot(alphas, aes(period, alpha)) +
   my_theme() +
   ggtitle("Relative importance of each trading partner in Spanish exports")
 
-ggsave("16_importance_ES.png", path = fig_path, height = 12, width = 12)
+ggsave("16_importance_ES.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 #### Final index ----
@@ -1111,7 +1111,7 @@ ggplot(foreign_demand, aes(period, value, color = country)) +
   my_theme() +
   ggtitle(expression(atop("Foreign demand for France, Germany, Italy and Spain", atop(italic("base 100 = 2010"), ""))))
 
-ggsave("17_foreign-demand.png", path = fig_path, height = 12, width = 12)
+ggsave("17_foreign-demand.png", path = fig_path, height = 12, width = 24)
 graphics.off()
 
 world_demand <- foreign_demand |> 
