@@ -661,7 +661,7 @@ ggplot(df, aes(period, value, color = country)) +
   my_theme() +
   ggtitle("Unchained Series")
 
-ggsave("09_unchained_DE-ES-FR-IT.png", path = fig_path, height = 8, width = 10)
+ggsave("09_unchained_DE-ES-FR-IT.png", path = fig_path, height = 12, width = 10)
 graphics.off()
 
 ### France: Chaining & Interpolating Data -----
@@ -2601,7 +2601,7 @@ ggplot(rawdata_growth_ratio, aes(period, value, color = country)) +
   my_theme() +
   ggtitle("Series for the calibration")
 
-ggsave("49_final.png", path = fig_path, height = 8, width = 10)
+ggsave("49_final.png", path = fig_path, height = 12, width = 12)
 graphics.off()
 
 calibration <- rawdata_growth_ratio |> 
