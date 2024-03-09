@@ -8,7 +8,7 @@ library(seasonal)
 library(gridExtra)
 library(RColorBrewer)
 source("R/utils.R")
-palette(brewer.pal(n = 9, name = "Set1"))
+palette(brewer.pal(n = 3, name = "Set1"))
 fig_path <- "figures/07_EA_Fipu_data/"
 # Build the database following Paredes et al. (2014).
 # The following series are included:
@@ -188,7 +188,7 @@ ggplot(plot_treatment, aes(period, value, color = Origin)) +
   facet_wrap(~ var, ncol = 2, scales = "free_y") +
   my_theme()
 
-ggsave("01_SCR-SCT.png", path = fig_path, height = 8, width = 12)
+ggsave("01_SCR-SCT.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 #### Most recent data ----
@@ -260,7 +260,7 @@ ggplot(plot_treatment, aes(period, value, color = Origin)) +
   my_theme() +
   ggtitle("Social contribution forward chaining")
 
-ggsave("02_SC-chain.png", path = fig_path, height = 8, width = 12)
+ggsave("02_SC-chain.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 ### Special case: Unemployment benefits ----
@@ -313,7 +313,7 @@ ggplot(data_plot, aes(period, value, color = var)) +
   my_theme() +
   ggtitle("Unemployment benefits series comparison")
 
-ggsave("03_unemp-comp.png", path = fig_path, height = 8, width = 12)
+ggsave("03_unemp-comp.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 ## Chaining recent data with historical ----
@@ -431,7 +431,7 @@ p2 <- ggplot(plot_totexp, aes(period, value, color = Origin)) +
   ggtitle("Total expenditures")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave("04_revenue-expenditures.png", path = fig_path, height = 8, width = 12)
+ggsave("04_revenue-expenditures.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 ### Public direct spending ----
@@ -467,7 +467,7 @@ p2 <- ggplot(plot_inves, aes(period, value, color = Origin)) +
   ggtitle("Public investment")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave("05_consumption-investment.png", path = fig_path, height = 8, width = 12)
+ggsave("05_consumption-investment.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 ### Specific spending ----
@@ -500,7 +500,7 @@ p2 <- ggplot(plot_subs, aes(period, value, color = Origin)) +
   ggtitle("Subsidies")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave("06_compensation-subsidies.png", path = fig_path, height = 8, width = 12)
+ggsave("06_compensation-subsidies.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 ### Taxes ----
@@ -532,7 +532,7 @@ p2 <- ggplot(plot_dir, aes(period, value, color = Origin)) +
   ggtitle("Direct taxation")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave("07_indirect-direct-taxation.png", path = fig_path, height = 8, width = 12)
+ggsave("07_indirect-direct-taxation.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 ### Debt and interest payments ----
@@ -565,7 +565,7 @@ p2 <- ggplot(plot_debt, aes(period, value, color = Origin)) +
   ggtitle("General government debt")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave("08_interest-debt.png", path = fig_path, height = 8, width = 12)
+ggsave("08_interest-debt.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 ### Total social transfers and unemployment benefits ----
@@ -592,7 +592,7 @@ p2 <- ggplot(plot_unemp, aes(period, value, color = Origin)) +
   ggtitle("Unemployment benefits")
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
-ggsave("09_transfers-benefits.png", path = fig_path, height = 8, width = 12)
+ggsave("09_transfers-benefits.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 ## Building the final database ----
@@ -654,7 +654,7 @@ ggplot(plot_compare, aes(period, value, color = Origin)) +
   my_theme() +
   ggtitle("Fiscal database for the Euro Area")
 
-ggsave("10_final.png", path = fig_path, height = 8, width = 12)
+ggsave("10_final.png", path = fig_path, height = 4, width = 6)
 graphics.off()
 
 ### Final fiscal database for the Euro area ----
