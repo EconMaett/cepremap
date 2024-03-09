@@ -5,7 +5,7 @@ library(tidyverse)
 library(kableExtra)
 library(RColorBrewer)
 source("R/utils.R")
-palette(brewer.pal(n = 9, name = "Dark2"))
+palette(brewer.pal(n = 9, name = "Set1"))
 fig_path <- "figures/04_rdbnomics-tutorial/"
 # DBnomics, the world's economic database: https://db.nomics.world/
 # The `rdbnomics` R package is available on:
@@ -64,7 +64,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("01_AMECO_ZUTN_EA19.png", path = fig_path, height = 12, width = 24)
+ggsave("01_AMECO_ZUTN_EA19.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ### Fetch two series -----
@@ -83,7 +83,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("02_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 12, width = 24)
+ggsave("02_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ### Fetch two series from different datasets and different providers -----
@@ -100,7 +100,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("03_AMECO_ZUTN_EA19-Eurostat_une.png", path = fig_path, height = 12, width = 24)
+ggsave("03_AMECO_ZUTN_EA19-Eurostat_une.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ## Fetch time series by `mask` ----
@@ -119,7 +119,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("04_IMF_BOP_FR.png", path = fig_path, height = 12, width = 24)
+ggsave("04_IMF_BOP_FR.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ### Fetch two series ----
@@ -139,7 +139,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("05_IMF_BOP_FR-DE.png", path = fig_path, height = 12, width = 24)
+ggsave("05_IMF_BOP_FR-DE.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ### Fetch all series along one dimension ----
@@ -203,7 +203,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("06_AMECO_ZUTN_EA19.png", path = fig_path, height = 12, width = 24)
+ggsave("06_AMECO_ZUTN_EA19.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ### Fetch two values of one dimension of ZUTN from AMECO ----
@@ -230,7 +230,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("07_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 12, width = 24)
+ggsave("07_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ### Fetch several values of several dimensions from Doing Business (DB) from World Bank ----
@@ -257,7 +257,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("08_IMF_WEO_FR.png", path = fig_path, height = 12, width = 24)
+ggsave("08_IMF_WEO_FR.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ### Fetch series of dataset "WEO by countries" (WEO) from provider IMF ----
@@ -294,7 +294,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("09_SECO_GDP_GR.png", path = fig_path, height = 12, width = 24)
+ggsave("09_SECO_GDP_GR.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ## Fetch time series from the cart ----
@@ -334,7 +334,7 @@ ggplot(df, aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("10_BOE_RPMTDDC-RPMTBVE.png", path = fig_path, height = 12, width = 24)
+ggsave("10_BOE_RPMTDDC-RPMTBVE.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ## Fetch the available datasets from a provider ---
@@ -606,6 +606,6 @@ ggplot(df[!is.na(value)], aes(period, value, color = series_name)) +
   geom_point(size = 2) +
   dbnomics()
 
-ggsave("11_AMECO_ZUTN_EA19-DNK_filtered.png", path = fig_path, height = 12, width = 24)
+ggsave("11_AMECO_ZUTN_EA19-DNK_filtered.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 # END

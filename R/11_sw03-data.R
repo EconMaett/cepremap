@@ -7,7 +7,7 @@ library(rdbnomics)
 library(mFilter)
 library(RColorBrewer)
 source("R/utils.R")
-palette(brewer.pal(n = 9, name = "Dark2"))
+palette(brewer.pal(n = 9, name = "Set1"))
 fig_path <- "figures/11_sw03-data/"
 # Smets & Wouters (2003) use eight time series:
 #    1. GDP
@@ -129,7 +129,7 @@ ggplot(hours_confboard, aes(period, value)) +
   my_theme() +
   ggtitle("Hours worked")
 
-ggsave("01_TED_EA19_hours.png", path = fig_path, height = 12, width = 24)
+ggsave("01_TED_EA19_hours.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 # There are still two problems with such a series:
 #   1. the series does not cover all the 19 member states of the Euro area for the whole period
@@ -256,7 +256,7 @@ ggplot(hours_filtered_levgr, aes(period, value, color = var)) +
   my_theme() + 
   ggtitle("Hours worked")
 
-ggsave("02_TED_EA19_hours-approx.png", path = fig_path, height = 12, width = 24)
+ggsave("02_TED_EA19_hours-approx.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 # Retain the Kalman filter method of interpolation to avoid the jump each first quarter in the growth rate
@@ -317,7 +317,7 @@ ggplot(check, aes(period, value, group = var, linetype = var, color = var)) +
   my_theme() +
   ggtitle("Comparison of hours worked series")
 
-ggsave("03_TED_EA19_hours-comparison.png", path = fig_path, height = 12, width = 24)
+ggsave("03_TED_EA19_hours-comparison.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ### Second special case: Population ----
@@ -348,7 +348,7 @@ pop_eurostat_bycountry |>
   my_theme() +
   ggtitle("Working-age population (in millions)")
 
-ggsave("04_Eurostat_population.png", path = fig_path, height = 12, width = 24)
+ggsave("04_Eurostat_population.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 # There remain two problems with this time series:
 #   1) the series does not cover all 19 Euro area member countries for the whole period
@@ -436,7 +436,7 @@ ggplot(pop_filtered_levgr, aes(period, value, color = var)) +
   my_theme() +
   ggtitle("Population")
 
-ggsave("05_Eurostat_population-approx.png", path = fig_path, height = 12, width = 24)
+ggsave("05_Eurostat_population-approx.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 # Retain the Kalman filter method of interpolation to avoid the jump each first quarter 
@@ -500,7 +500,7 @@ ggplot(check, aes(period, value, color = var)) +
   my_theme() +
   ggtitle("Population")
 
-ggsave("06_Eurostat_population-comparison.png", path = fig_path, height = 12, width = 24)
+ggsave("06_Eurostat_population-comparison.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 ### Recent data (since the end of the 1990s) ----
@@ -663,7 +663,7 @@ ggplot(plot_pop, aes(period, value, color = var)) +
   my_theme() +
   ggtitle("Quarterly Population")
 
-ggsave("07_Eurostat_population-growthrates.png", path = fig_path, height = 12, width = 24)
+ggsave("07_Eurostat_population-growthrates.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 # The last years of the series exhibit high levels of volatility
@@ -692,7 +692,7 @@ ggplot(pop_filtered_levgr, aes(period, value, color = var)) +
   my_theme() +
   ggtitle("Population")
 
-ggsave("08_Eurostat_population-smoothed.png", path = fig_path, height = 12, width = 24)
+ggsave("08_Eurostat_population-smoothed.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 # We retain the smoothed series obtained from the Hodrick-Prescott filter.
@@ -725,7 +725,7 @@ ggplot(plot_df, aes(period, value)) +
   facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme()
   
-ggsave("09_final-database.png", path = fig_path, height = 12, width = 24)
+ggsave("09_final-database.png", path = fig_path, height = 8, width = 12)
 graphics.off()
 
 # You can download the 11 series directly here: shiny.cepremap.fr/data/EA_SW_rawdata.csv
