@@ -145,7 +145,7 @@ ggplot(conso, aes(period, value)) +
   my_theme() +
   ggtitle("Real Personal Consumption Expenditures")
 
-ggsave("01_consumption.png", path = fig_path, height = 4, width = 6)
+ggsave("01_consumption.png", path = fig_path, height = 8, width = 10)
 graphics.off()
 
 # Create variables "var_code" and "var_name"
@@ -272,7 +272,7 @@ ggplot(plot_US_CMR_data, aes(period, value)) +
   my_theme() +
   ggtitle("CMR data for the US")
 
-ggsave("02_CMR_US.png", path = fig_path, height = 4, width = 6)
+ggsave("02_CMR_US.png", path = fig_path, height = 8, width = 10)
 graphics.off()
 
 # Normalized data: http://shiny.cepremap.fr/data/US_CMR_data.csv

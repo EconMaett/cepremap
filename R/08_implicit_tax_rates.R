@@ -11,7 +11,7 @@ library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 5, name = "Set1"))
 fig_path <- "figures/08_ITR/"
-year_max <- 2023
+year_max <- year(today())
 list_country <- list(
   "France"    = "FR",
   "Germany"   = "DE",
@@ -241,7 +241,7 @@ ggplot(ITR_consumption_FIN, aes(period, value, color = country)) +
   my_theme() +
   ggtitle("Implicit Tax Rate on Consumption")
 
-ggsave("01_ITR_consumption.png", path = fig_path, width = 6, height = 4)
+ggsave("01_ITR_consumption.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 
 ## Implicit tax rate on labor ----
@@ -531,7 +531,7 @@ ggplot(ITR_labor_FIN1, aes(period, ITR_labor, color = country)) +
   my_theme() +
   ggtitle("Implicit Tax Rate on Labor")
 
-ggsave("02_ITR_Labor.png", path = fig_path, width = 6, height = 4)
+ggsave("02_ITR_Labor.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 
 # For the analysis, it is possible to recover the evolution 
@@ -564,7 +564,7 @@ ggplot(ITR_labor_shares, aes(period, value, color = var)) +
   my_theme() +
   ggtitle("Personal Income Tax, Employees' SSC and Employers' SSC & payroll taxes \n (as a share of the ITR on Labor)")
 
-ggsave("03_ITR_SSC.png", path = fig_path, width = 6, height = 4)
+ggsave("03_ITR_SSC.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 
 # The chart below shows the evolution of the composition of the ITR on labor:
@@ -586,7 +586,7 @@ ggplot(ITR_labor_FIN, mapping = aes(fill = var, value, x = period)) +
   my_theme() +
   ggtitle("Composition of the Implicit Tax Rate on Labor")
 
-ggsave("04_ITR_Labor.png", path = fig_path, width = 6, height = 4)
+ggsave("04_ITR_Labor.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 
 # And the last chart shows all the ITRs for a multi-country comparison:
@@ -596,7 +596,7 @@ ggplot(ITR_labor_FIN, aes(period, value, color = country)) +
   my_theme() +
   ggtitle("Implicit Tax Rates on Labor (%)")
 
-ggsave("05_ITR_Labor.png", path = fig_path, width = 6, height = 4)
+ggsave("05_ITR_Labor.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 
 ## Implicit tax rate on corporate income ----
@@ -640,7 +640,7 @@ ggplot(ITR_corporate_income_FIN, aes(period, value, color = country)) +
   my_theme() +
   ggtitle("Implicit Tax Rate on Corporate Income")
 
-ggsave("06_ITR_Corporate.png", path = fig_path, width = 6, height = 4)
+ggsave("06_ITR_Corporate.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 
 ## Average values ----
@@ -676,7 +676,7 @@ ggplot(ss_ITR_plot, aes(country, value, fill = country)) +
     ) +
   ggtitle("Implicit tax rates - average values")
 
-ggsave("07_ITR_Average.png", path = fig_path, width = 6, height = 4)
+ggsave("07_ITR_Average.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 
 # We can download ready-to-use data for France, Germany, Italy, Spain and the Euro Area in csv format here.
@@ -758,7 +758,7 @@ ggplot(comparison1, aes(period, value, color = data_s)) +
   my_theme() +
   ggtitle(expression(atop("Consumption tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))))
 
-ggsave("08_comparison_1.png", path = fig_path, width = 6, height = 4)
+ggsave("08_comparison_1.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 
 comparison2 <- comparison |> 
@@ -770,6 +770,6 @@ ggplot(comparison2, aes(period, value, color = data_s)) +
   my_theme() +
   ggtitle(expression(atop("Labor tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))))
 
-ggsave("09_comparison_2.png", path = fig_path, width = 6, height = 4)
+ggsave("09_comparison_2.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 # END
