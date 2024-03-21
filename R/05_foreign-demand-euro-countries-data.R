@@ -12,7 +12,7 @@ library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 2, name = "Set1"))
 fig_path <- "figures/05_foreign-demand-ea/"
-
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 ## France ----
 ### Main commercial partners imports of goods and services ----
 # (Volume, quarterly, seasonally adjusted)
@@ -44,10 +44,12 @@ ggplot(imports, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, nrow = 4, scales = "free_y") +
   my_theme() +
-  ggtitle(
-    label = "Imports of goods and services",
-    subtitle = "(volume, seasonally adjusted, national currency)"
-  )
+  labs(
+    title = "Imports of goods and services",
+    subtitle = "(volume, seasonally adjusted, national currency)",
+    caption = last_update
+    )
+
 ggsave("01_imports_levels.png", path = fig_path, height = 8, width = 10)
 graphics.off()
 
@@ -110,9 +112,10 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "fixed") +
   my_theme() +
-  ggtitle(
-    label = "Growth rates of imports of goods and services", 
-    subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)"
+  labs(
+    title = "Growth rates of imports of goods and services", 
+    subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)",
+    caption = last_update
     )
 
 ggsave("02_imports_gr.png", path = fig_path, height = 8, width = 10)
@@ -189,7 +192,7 @@ plot_export2 <- bind_rows(export_all, export_14) |>
 ggplot(plot_export2, aes(period, value2, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Growth rate of exports, with 14 and 18 partners")
+  labs(title = "Growth rate of exports, with 14 and 18 partners", caption = last_update)
 
 ggsave("03_exports_FR_gr.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -244,7 +247,7 @@ ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "free_y") +
   my_theme() +
-  ggtitle("Relative importance of each trading partner in French exports")
+  labs(title = "Relative importance of each trading partner in French exports", caption = last_update)
 
 ggsave("04_importance_FR.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -322,7 +325,11 @@ ggplot(imports, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "free_y") +
   my_theme() +
-  ggtitle("Imports of goods and services", subtitle = "(volume, seasonally adjusted, national currency)")
+  labs(
+    title = "Imports of goods and services", 
+    subtitle = "(volume, seasonally adjusted, national currency)",
+    caption = last_update
+    )
 
 ggsave("05_imports_DE_levels.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -370,7 +377,11 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "fixed") +
   my_theme() +
-  ggtitle("Growth rates of imports of goods and services", subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)")
+  labs(
+    title = "Growth rates of imports of goods and services", 
+    subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)",
+    caption = last_update
+    )
 
 ggsave("06_imports_DE_gr.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -446,7 +457,7 @@ plot_export2 <- bind_rows(export_all, export_12) |>
 ggplot(plot_export2, aes(period, value2, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Growth rate of exports, with 12 and 18 partners")
+  labs(title = "Growth rate of exports, with 12 and 18 partners", caption = last_update)
 
 ggsave("07_exports_DE_gr.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -504,7 +515,7 @@ ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ country, ncol = 5, scales = "free_y") +
   my_theme() +
-  ggtitle("Relative importance of each trading partner in German exports")
+  labs(title = "Relative importance of each trading partner in German exports", caption = last_update)
 
 ggsave("08_importance_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -580,10 +591,12 @@ ggplot(imports, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "free_y") +
   my_theme() +
-  ggtitle(
-    label = "Imports of goods and services", 
-    subtitle = "(volume, seasonally adjusted, national currency)"
+  labs(
+    title = "Imports of goods and services", 
+    subtitle = "(volume, seasonally adjusted, national currency)",
+    caption = last_update
     )
+
 ggsave("09_imports_IT_levels.png", path = fig_path, height = 8, width = 10)
 graphics.off()
 
@@ -651,7 +664,11 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "fixed") +
   my_theme() +
-  ggtitle("Growth rates of imports of goods and services", subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)")
+  labs(
+    title = "Growth rates of imports of goods and services", 
+    subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)",
+    caption = last_update
+    )
 
 ggsave("10_imports_IT_gr.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -730,7 +747,7 @@ plot_export2 <- bind_rows(export_all, export_15) |>
 ggplot(plot_export2, aes(period, value2, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Growth rate of exports, with 15 and 22 partners")
+  labs(title = "Growth rate of exports, with 15 and 22 partners", caption = last_update)
 
 ggsave("11_exports_IT_gr.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -787,7 +804,7 @@ ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "free_y") +
   my_theme() +
-  ggtitle("Relative importance of each trading partner in Italian exports")
+  labs(title = "Relative importance of each trading partner in Italian exports", caption = last_update)
 
 ggsave("12_importance_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -867,7 +884,11 @@ ggplot(imports, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "free_y") +
   my_theme() +
-  ggtitle("Imports of goods and services", subtitle = "(volume, seasonally adjusted, national currency)")
+  labs(
+    title = "Imports of goods and services", 
+    subtitle = "(volume, seasonally adjusted, national currency)",
+    caption = last_update
+    )
 
 ggsave("13_imports_ES_levels.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -932,7 +953,11 @@ ggplot(filter(imports_growth_rate, year(period) >= 1981), aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "fixed") +
   my_theme() +
-  ggtitle("Growth rates of imports of goods and services", subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)")
+  labs(
+    title = "Growth rates of imports of goods and services", 
+    subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)",
+    caption = last_update
+    )
 
 ggsave("14_imports_ES_gr.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1003,7 +1028,7 @@ plot_export2 <- bind_rows(export_all, export_14) |>
 ggplot(plot_export2, aes(period, value2, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Growth rate of exports, with 14 and 18 partners")
+  labs(title = "Growth rate of exports, with 14 and 18 partners", caption = last_update)
 
 ggsave("15_exports_ES_gr.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1059,7 +1084,7 @@ ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~country, ncol = 5, scales = "free_y") +
   my_theme() +
-  ggtitle("Relative importance of each trading partner in Spanish exports")
+  labs(title = "Relative importance of each trading partner in Spanish exports", caption = last_update)
 
 ggsave("16_importance_ES.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1109,7 +1134,10 @@ ggplot(foreign_demand, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ var, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle(expression(atop("Foreign demand for France, Germany, Italy and Spain", atop(italic("base 100 = 2010"), ""))))
+  labs(
+    title = expression(atop("Foreign demand for France, Germany, Italy and Spain", atop(italic("base 100 = 2010"), ""))),
+    caption = last_update
+    )
 
 ggsave("17_foreign-demand.png", path = fig_path, height = 8, width = 10)
 graphics.off()

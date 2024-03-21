@@ -7,6 +7,7 @@ library(fredr)
 library(kableExtra)
 source("R/utils.R")
 fig_path <- "figures/09_cmr14-data/"
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 # Twelve series are needed for the Christiano, Motto and Rostagno (CMR) model:
 #    1. GDP
 #    2. GDP deflator
@@ -143,7 +144,7 @@ ggplot(conso, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ var_name, nrow = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Real Personal Consumption Expenditures")
+  labs(title = "Real Personal Consumption Expenditures", caption = last_update)
 
 ggsave("01_consumption.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -270,7 +271,7 @@ ggplot(plot_US_CMR_data, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("CMR data for the US")
+  labs(title = "Christiano, Motto and Rostagno (CMR) (2014) database for the United States", caption = last_update)
 
 ggsave("02_CMR_US.png", path = fig_path, height = 8, width = 10)
 graphics.off()

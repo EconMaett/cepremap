@@ -11,6 +11,7 @@ library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 5, name = "Set1"))
 fig_path <- "figures/08_ITR/"
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 year_max <- year(today())
 list_country <- list(
   "France"    = "FR",
@@ -27,7 +28,7 @@ list_country <- list(
 # The DG Taxation & Customs Union of the European Commission proposes
 # a detailed methodology on its website.
 
-# We follow this methodology using Eurostat's data for the EA19.
+# Follow this methodology using Eurostat's data for the EA19.
 # Some specifities for France, Germany, Italy, and Spain are added.
 
 # The ITR is calculated in four steps.
@@ -239,7 +240,7 @@ levels(ITR_consumption_FIN$country) <- list_country
 ggplot(ITR_consumption_FIN, aes(period, value, color = country)) +
   geom_line(lwd = 1.2)+
   my_theme() +
-  ggtitle("Implicit Tax Rate on Consumption")
+  labs(title = "Implicit Tax Rate on Consumption", caption = last_update)
 
 ggsave("01_ITR_consumption.png", path = fig_path, width = 10, height = 8)
 graphics.off()
@@ -326,13 +327,16 @@ labor_specificities <- readxl::read_xlsx(path = "data/s_labour.xlsx") |>
 # It provides data for estimating the part of the revenue from personal income tax 
 # that can be attributed to labor income. 
 
+# European Commission Taxation Trends Reports
+# New Website: https://taxation-customs.ec.europa.eu/taxation-1/economic-analysis-taxation/data-taxation-trends_en#:~:text=Member%20States%20collected%20EUR%206%2C388,back%20of%20mounting%20businesses'%20profits.
+
 # The tables below can be found in the reports on Taxation Trends in the European Union in its 
-#   2020: https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2020.pdf
-#   2019: https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2019.pdf
-#   2018: https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2018.pdf
-#   2017: https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2017.pdf
-#   2016: https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/tax_structures/2016/econ_analysis_report_2016.pdf
-#   2014: https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/tax_structures/2014/report.pdf
+# 2020: https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2020.pdf
+# 2019: https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2019.pdf
+# 2018: https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2018.pdf
+# 2017: https://ec.europa.eu/taxation_customs/sites/taxation/files/taxation_trends_report_2017.pdf
+# 2016: https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/tax_structures/2016/econ_analysis_report_2016.pdf
+# 2014: https://ec.europa.eu/taxation_customs/sites/taxation/files/resources/documents/taxation/gen_info/economic_analysis/tax_structures/2014/report.pdf
 # editions (pages 297, 292, 292, 276, 330 and 303 respectively). 
 
 # We will chain the tables by averaging the data points when they differ from table to table, 
@@ -529,7 +533,7 @@ levels(ITR_labor_FIN1$country) <- list_country
 ggplot(ITR_labor_FIN1, aes(period, ITR_labor, color = country)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Implicit Tax Rate on Labor")
+  labs(title = "Implicit Tax Rate on Labor", caption = last_update)
 
 ggsave("02_ITR_Labor.png", path = fig_path, width = 10, height = 8)
 graphics.off()
@@ -562,7 +566,10 @@ ggplot(ITR_labor_shares, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ country , scales = "fixed", ncol = 2) +
   my_theme() +
-  ggtitle("Personal Income Tax, Employees' SSC and Employers' SSC & payroll taxes \n (as a share of the ITR on Labor)")
+  labs(
+    title = "Personal Income Tax, Employees' SSC and Employers' SSC & payroll taxes \n (as a share of the ITR on Labor)",
+    caption = last_update
+    )
 
 ggsave("03_ITR_SSC.png", path = fig_path, width = 10, height = 8)
 graphics.off()
@@ -584,7 +591,7 @@ ggplot(ITR_labor_FIN, mapping = aes(fill = var, value, x = period)) +
   geom_bar(stat = "identity") +
   facet_wrap(~ country , scales = "fixed", ncol = 3) +
   my_theme() +
-  ggtitle("Composition of the Implicit Tax Rate on Labor")
+  labs(title = "Composition of the Implicit Tax Rate on Labor", caption = last_update)
 
 ggsave("04_ITR_Labor.png", path = fig_path, width = 10, height = 8)
 graphics.off()
@@ -594,16 +601,15 @@ ggplot(ITR_labor_FIN, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ var , ncol = 3) +
   my_theme() +
-  ggtitle("Implicit Tax Rates on Labor (%)")
+  labs(title = "Implicit Tax Rates on Labor (%)", caption = last_update)
 
 ggsave("05_ITR_Labor.png", path = fig_path, width = 10, height = 8)
 graphics.off()
 
 ## Implicit tax rate on corporate income ----
 
-# The methodology for calculating the ITR on corporate income that proposes 
-# the DG Taxation & Customs Union may exceed the statutory corporate tax rate, 
-# for instance, on the payment by corporation of taxes referring to profits earned earlier, 
+# The DG Taxation & Customs Union may exceed the statutory corporate tax rate, 
+# e.g. on the payment by corporation of taxes referring to profits earned earlier, 
 # or on taxes paid on capital gains (which are not included in the ITR denominator due to a lack of statistics). 
 # That is why, in this section we choose the top statutory corporate income tax rate (including surcharges) as a proxy. 
 
@@ -638,7 +644,7 @@ levels(ITR_corporate_income_FIN$country) <- list_country
 ggplot(ITR_corporate_income_FIN, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Implicit Tax Rate on Corporate Income")
+  labs(title = "Implicit Tax Rate on Corporate Income", caption = last_update)
 
 ggsave("06_ITR_Corporate.png", path = fig_path, width = 10, height = 8)
 graphics.off()
@@ -674,9 +680,9 @@ ggplot(ss_ITR_plot, aes(country, value, fill = country)) +
     strip.text = element_text(size = 12),
     legend.position = "none"
     ) +
-  ggtitle("Implicit tax rates - average values")
+  labs(title = "Implicit tax rates - average values", caption = last_update)
 
-ggsave("07_ITR_Average.png", path = fig_path, width = 10, height = 8)
+ggsave("07_ITR_Average.png", path = fig_path, width = 10, height = 8, bg = "white")
 graphics.off()
 
 # We can download ready-to-use data for France, Germany, Italy, Spain and the Euro Area in csv format here.
@@ -756,7 +762,10 @@ ggplot(comparison1, aes(period, value, color = data_s)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ country , scales = "fixed", ncol = 3) +
   my_theme() +
-  ggtitle(expression(atop("Consumption tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))))
+  labs(
+    title = expression(atop("Consumption tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))),
+    caption = last_update
+    )
 
 ggsave("08_comparison_1.png", path = fig_path, width = 10, height = 8)
 graphics.off()
@@ -768,7 +777,10 @@ ggplot(comparison2, aes(period, value, color = data_s)) +
   geom_line(lwd = 1.2)+
   facet_wrap(~ country , scales = "fixed", ncol = 3) +
   my_theme() +
-  ggtitle(expression(atop("Labor tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))))
+  labs(
+    title = expression(atop("Labor tax", atop(italic("Comparison: European Commission vs. Updated Data"), ""))),
+    caption = last_update
+    )
 
 ggsave("09_comparison_2.png", path = fig_path, width = 10, height = 8)
 graphics.off()

@@ -10,6 +10,7 @@ library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 3, name = "Set1"))
 fig_path <- "figures/07_EA_Fipu_data/"
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 # Build the database following Paredes et al. (2014).
 # The following series are included:
 #    1. Direct taxes
@@ -186,7 +187,8 @@ plot_treatment <- bind_rows(qscr_uncomplete, qsce_uncomplete) |>
 ggplot(plot_treatment, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ var, ncol = 2, scales = "free_y") +
-  my_theme()
+  my_theme() +
+  labs(title = "Social contributions", caption = last_update)
 
 ggsave("01_SCR-SCT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -258,7 +260,7 @@ ggplot(plot_treatment, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ var, ncol = 2, scales = "free_y") +
   my_theme() +
-  ggtitle("Social contribution forward chaining")
+  labs(title = "Social contribution forward chaining", caption = last_update)
 
 ggsave("02_SC-chain.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -311,7 +313,7 @@ data_plot <- ppp |>
 ggplot(data_plot, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Unemployment benefits series comparison")
+  labs(title = "Unemployment benefits series comparison", caption = last_update)
 
 ggsave("03_unemp-comp.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -422,13 +424,13 @@ p1 <- ggplot(plot_totrev, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Total revenue")
+  labs(title = "Total revenue", caption = last_update)
 
 p2 <- ggplot(plot_totexp, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Total expenditures")
+  labs(title = "Total expenditures", caption = last_update)
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
 ggsave("04_revenue-expenditures.png", path = fig_path, height = 8, width = 10)
@@ -458,13 +460,13 @@ p1 <- ggplot(plot_cons, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Public consumption")
+  labs(title = "Public consumption", caption = last_update)
 
 p2 <- ggplot(plot_inves, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Public investment")
+  labs(title = "Public investment", caption = last_update)
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
 ggsave("05_consumption-investment.png", path = fig_path, height = 8, width = 10)
@@ -491,13 +493,13 @@ p1 <- ggplot(plot_salaries, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Compensation of employees")
+  labs(title = "Compensation of employees", caption = last_update)
 
 p2 <- ggplot(plot_subs, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Subsidies")
+  labs(title = "Subsidies", caption = last_update)
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
 ggsave("06_compensation-subsidies.png", path = fig_path, height = 8, width = 10)
@@ -523,13 +525,13 @@ p1 <- ggplot(plot_indir, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Indirect taxation")
+  labs(title = "Indirect taxation", caption = last_update)
 
 p2 <- ggplot(plot_dir, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Direct taxation")
+  labs(title = "Direct taxation", caption = last_update)
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
 ggsave("07_indirect-direct-taxation.png", path = fig_path, height = 8, width = 10)
@@ -556,13 +558,13 @@ p1 <- ggplot(plot_intpay, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Interest payments")
+  labs(title = "Interest payments", caption = last_update)
 
 p2 <- ggplot(plot_debt, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("General government debt")
+  labs(title = "General government debt", caption = last_update)
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
 ggsave("08_interest-debt.png", path = fig_path, height = 8, width = 10)
@@ -583,13 +585,13 @@ p1 <- ggplot(plot_transf, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Social transfers")
+  labs(title = "Social transfers", caption = last_update)
 
 p2 <- ggplot(plot_unemp, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, scales = "free_y", ncol = 1) +
   my_theme() +
-  ggtitle("Unemployment benefits")
+  labs(title = "Unemployment benefits", caption = last_update)
 
 grid.arrange(arrangeGrob(p1, p2, ncol = 2))
 ggsave("09_transfers-benefits.png", path = fig_path, height = 8, width = 10)
@@ -652,7 +654,7 @@ ggplot(plot_compare, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Fiscal database for the Euro Area")
+  labs(title = "Fiscal database for the Euro Area", caption = last_update)
 
 ggsave("10_final.png", path = fig_path, height = 8, width = 10)
 graphics.off()

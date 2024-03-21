@@ -10,6 +10,7 @@ library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 3, name = "Set1"))
 fig_path <- "figures/10_cmr14-EA-data/"
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 # Four financial time series are used in Christiano et al. (2014):
 #   1. Loans to non-financial corporations (NFC)
 #   2. Bank lending rates
@@ -96,7 +97,7 @@ ggplot(bind_rows(loans_nfc_countries, loans_nfc_EA), aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ country, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Loans to non-financial corporations (billions of euro)")
+  labs(title = "Loans to non-financial corporations (billions of euro)", caption = last_update)
 
 ggsave("01_BIS_credit_nfc.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -113,7 +114,7 @@ ggplot(bind_rows(loans_hh_countries, loans_hh_EA), aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ country, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Loans to households and NPISHs (billions of euro)")
+  labs(title = "Loans to households and NPISHs (billions of euro)", caption = last_update)
 
 ggsave("02_BIS_credit_hh.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -159,7 +160,7 @@ loans_nfc_EA <- loans_nfc_EA |>
 ggplot(bind_rows(loans_nfc_sumAll, loans_nfc_EA, loans_nfc_chained), aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Loans to non-financial corporations (billions of euro) [1]")
+  labs(title = "Loans to non-financial corporations (billions of euro) [1]", caption = last_update)
 
 ggsave("03_BIS_credit_nfc_chained.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -206,7 +207,7 @@ loans_hh_EA <- loans_hh_EA |>
 ggplot(bind_rows(loans_hh_sumAll, loans_hh_EA, loans_hh_chained), aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Loans to households and NPISHs (billions of euro) [1]")
+  labs(title = "Loans to households and NPISHs (billions of euro) [1]", caption = last_update)
 
 ggsave("04_BIS_credit_hh_chained.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -284,7 +285,7 @@ dataplot <- bind_rows(lendingrate_recent, lendingrate_old)
 ggplot(dataplot, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Bank lending rate (%)")
+  labs(title = "Bank lending rate (%)", caption = last_update)
 
 ggsave("05_ECB_lendingrates.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -344,7 +345,7 @@ dataplot <- bind_rows(tibble(longrate_recent, ind = "recent"), tibble(longrate_o
 ggplot(dataplot, aes(period, value, color = ind)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Long-term interest rate (%)")
+  labs(title = "Long-term interest rate (%)", caption = last_update)
 
 ggsave("06_ECB_lendingrates_longterm.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -371,7 +372,7 @@ networth <- df |>
 ggplot(networth, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   my_theme() +
-  ggtitle("Entrepreneurial net worth (index)")
+  labs(title = "Entrepreneurial net worth (index)", caption = last_update)
 
 ggsave("07_ECB_entrepreneurialnetworth.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -391,7 +392,7 @@ houseprice <- df |>
 ggplot(houseprice, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   my_theme() +
-  ggtitle("House prices (index)")
+  labs(title = "House prices (index)", caption = last_update)
 
 ggsave("08_ECB_houseprices.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -438,7 +439,12 @@ levels(plot_df$var) <- list_var
 ggplot(plot_df, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ var, scales = "free_y", ncol = 3) +
-  my_theme()
+  my_theme() +
+  labs(
+    title = "Financial database for the Euro Area", 
+    subtitle = "Based on Christiano et al. (2014)",
+    caption = last_update
+  )
   
 ggsave("09_final.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -524,7 +530,7 @@ ggplot(plot_EA_CMR_data, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("CMR data for the Euro area")
+  labs(title = "Christiano et al. (2014) database for the Euro area", caption = last_update)
 
 ggsave("10_CMR_EA.png", path = fig_path, height = 8, width = 10)
 graphics.off()

@@ -7,8 +7,9 @@ library(rdbnomics)
 library(mFilter)
 library(RColorBrewer)
 source("R/utils.R")
-palette(brewer.pal(n = 3, name = "Set1"))
-fig_path <- "figures/11_sw03-data/"
+palette(brewer.pal(n = 3, name = "Set2"))
+fig_path    <- "figures/11_sw03-data/"
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 # Smets & Wouters (2003) use eight time series:
 #    1. GDP
 #    2. GDP deflator
@@ -86,15 +87,11 @@ awm <- awm |>
 # The database ends in 2017 Q4 ("2017-10-01").
 
 ### First special case: Hours worked ----
-# In 2003 no time series for hours worked existed, so the authors used a formula linking 
-# employment to the hours worked in their model. 
+# In 2003 hours worked were not recorded, so the authors linked employment to the hours worked in their model. 
 # Today, Eurostat provides a quarterly series starting in 2000 Q1.
+# Build a historical hours worked time series with data from TCB until 1999 Q4 and then use the data from Eurostat.
 
-# We build a historical hours worked time series with data from The Conference Board 
-# until 1999 Q4 and then use the data from Eurostat.
-
-# Find The Conference Board's Total Economy Database (TED) at:
-# https://www.conference-board.org/data/economydatabase/index.cfm
+# Find The Conference Board's Total Economy Database (TED) at: https://www.conference-board.org/data/economydatabase/index.cfm
 ted <- "TED---Output-Labor-and-Labor-Productivity-1950-2015.xlsx"
 link_to_confboard <- paste0("https://www.conference-board.org/retrievefile.cfm?filename=", ted, "&type=subsite")
 
@@ -127,7 +124,7 @@ ggplot(hours_confboard, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ country, ncol = 4, scales = "free_y") +
   my_theme() +
-  ggtitle("Hours worked")
+  labs(title = "Hours worked", caption = last_update)
 
 ggsave("01_TED_EA19_hours.png", path = fig_path, height = 6, width = 10)
 graphics.off()
@@ -254,7 +251,7 @@ ggplot(hours_filtered_levgr, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, ncol = 1, scales = "free_y") +
   my_theme() + 
-  ggtitle("Hours worked")
+  labs(title = "Hours worked", caption = last_update)
 
 ggsave("02_TED_EA19_hours-approx.png", path = fig_path, height = 6, width = 10)
 graphics.off()
@@ -315,7 +312,7 @@ check <- bind_rows(
 ggplot(check, aes(period, value, group = var, linetype = var, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Comparison of hours worked series")
+  labs(title = "Comparison of hours worked series", caption = last_update)
 
 ggsave("03_TED_EA19_hours-comparison.png", path = fig_path, height = 6, width = 10)
 graphics.off()
@@ -346,7 +343,7 @@ pop_eurostat_bycountry |>
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ country, ncol = 4, scales = "free_y") +
   my_theme() +
-  ggtitle("Working-age population (in millions)")
+  labs(title = "Working-age population (in millions)", caption = last_update)
 
 ggsave("04_Eurostat_population.png", path = fig_path, height = 6, width = 10)
 graphics.off()
@@ -434,7 +431,7 @@ ggplot(pop_filtered_levgr, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, ncol = 1, scales = "free_y") +
   my_theme() +
-  ggtitle("Population")
+  labs(title = "Population", caption = last_update)
 
 ggsave("05_Eurostat_population-approx.png", path = fig_path, height = 6, width = 10)
 graphics.off()
@@ -498,7 +495,7 @@ check <- bind_rows(pop_a_ind, eurostat_data_ind, pop_ind)
 ggplot(check, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Population")
+  labs(title = "Population", caption = last_update)
 
 ggsave("06_Eurostat_population-comparison.png", path = fig_path, height = 6, width = 10)
 graphics.off()
@@ -661,7 +658,7 @@ ggplot(plot_pop, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, ncol = 1, scales = "free_y") +
   my_theme() +
-  ggtitle("Quarterly Population")
+  labs(title = "Quarterly Population", caption = last_update)
 
 ggsave("07_Eurostat_population-growthrates.png", path = fig_path, height = 6, width = 10)
 graphics.off()
@@ -690,7 +687,7 @@ ggplot(pop_filtered_levgr, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ ind2, ncol = 1, scales = "free_y") +
   my_theme() +
-  ggtitle("Population")
+  labs("Population", caption = last_update)
 
 ggsave("08_Eurostat_population-smoothed.png", path = fig_path, height = 6, width = 10)
 graphics.off()
@@ -723,7 +720,8 @@ levels(plot_df$var) <- list_var
 ggplot(plot_df, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ var, ncol = 3, scales = "free_y") +
-  my_theme()
+  my_theme() +
+  labs(title = "Smets & Wouters (2003) database for the Euro Area", caption = last_update)
   
 ggsave("09_final-database.png", path = fig_path, height = 6, width = 10)
 graphics.off()

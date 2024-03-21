@@ -38,7 +38,6 @@ scale_color_discrete <- function(...) {
 }
 
 ## dbnomics -----
-# The original used "transparent" instead of "white" backgrounds.
 dbnomics <- function() {
   list(
     scale_x_date(expand = c(0, 0)),
@@ -50,10 +49,10 @@ dbnomics <- function() {
     theme_bw(),
     theme(
       legend.position = "bottom", legend.direction = "vertical",
-      legend.background = element_rect(fill = "transparent", colour = NA),
+      legend.background = element_rect(fill = "transparent", color = NA),
       legend.key = element_blank(),
-      panel.background = element_rect(fill = "transparent", colour = NA),
-      plot.background = element_rect(fill = "transparent", colour = NA),
+      panel.background = element_rect(fill = "transparent", color = NA),
+      plot.background = element_rect(fill = "transparent", color = NA),
       legend.title = element_blank()
     ),
     annotate(
@@ -81,13 +80,14 @@ my_theme <- function() {
       title = element_text(size = 16),
       panel.border = element_blank(),
       panel.grid.major = element_line(linewidth = 1),
-      legend.key = element_rect(colour = "white"),
+      legend.key = element_rect(color = "white"),
       legend.title = element_blank(),
       legend.position = "bottom",
       legend.text = element_text(size = 10),
       axis.text = element_text(size = 8),
       plot.title = element_text(hjust = 0.5),
-      plot.subtitle = element_text(hjust = 0.5)
+      plot.subtitle = element_text(hjust = 0.5),
+      plot.caption = element_text(size = 8)
     )
   )
 }

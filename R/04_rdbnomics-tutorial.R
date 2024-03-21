@@ -7,6 +7,7 @@ library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 2, name = "Set1"))
 fig_path <- "figures/04_rdbnomics-tutorial/"
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 # DBnomics, the world's economic database: https://db.nomics.world/
 # The `rdbnomics` R package is available on:
 # - CRAN: https://cran.r-project.org/package=rdbnomics
@@ -62,7 +63,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("01_AMECO_ZUTN_EA19.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -81,7 +83,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("02_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -98,7 +101,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("03_AMECO_ZUTN_EA19-Eurostat_une.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -117,7 +121,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("04_IMF_BOP_FR.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -137,7 +142,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("05_IMF_BOP_FR-DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -201,7 +207,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("06_AMECO_ZUTN_EA19.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -228,7 +235,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("07_AMECO_ZUTN_EA19-DNK.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -255,7 +263,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("08_IMF_WEO_FR.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -292,7 +301,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("09_SECO_GDP_GR.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -332,7 +342,8 @@ df |>
 ggplot(df, aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("10_BOE_RPMTDDC-RPMTBVE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -604,7 +615,8 @@ display_table(head(df))
 ggplot(df[!is.na(value)], aes(period, value, color = series_name)) +
   geom_line(lwd = 1.2) +
   geom_point(size = 2) +
-  my_theme()
+  my_theme() +
+  labs(caption = last_update)
 
 ggsave("11_AMECO_ZUTN_EA19-DNK_filtered.png", path = fig_path, height = 8, width = 10)
 graphics.off()

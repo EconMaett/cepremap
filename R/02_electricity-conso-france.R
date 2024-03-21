@@ -11,7 +11,7 @@ library(gridExtra)
 library(RcppRoll)
 source("R/utils.R")
 fig_path <- "figures/02_electricity-conso-france"
-
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 # Access data through DBnomics. Consumption categories:
 # - pme: Petites et moyennes entreprises (PME) | Small and medium enterprises (SME)
 # - resid: Redsidential consumption
@@ -85,7 +85,7 @@ ggplot(filter(elec2, var == "Total consumption"), aes(month_day, value, color = 
     unhighlighted_params = list(color = "transparent")
     ) +
   theme(legend.position = c(0.85, 0.75)) +
-  labs(title = title_total_vec, subtitle = subtitle_vec)
+  labs(title = title_total_vec, subtitle = subtitle_vec, caption = last_update)
 
 ggsave("01_elec-total.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()
@@ -103,7 +103,7 @@ ggplot(filter(elec2, var == "Total consumption"), aes(month_day, value, color = 
     unhighlighted_params = list(color = "transparent")
     ) +
   theme(legend.position = c(0.88, 0.64)) +
-  labs(title = title_total_vec, subtitle = subtitle_vec,x = NULL, NULL)
+  labs(title = title_total_vec, subtitle = subtitle_vec, x = NULL, y = NULL, caption = last_update)
 
 ggsave("02_elec-total.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()
@@ -156,7 +156,7 @@ plot_elec_total_3 <- ggplot(filter(elec2, var == "Total consumption"), aes(month
   annotate("text", x = "05-10", 45, label = "sum of cons. < \naverage = -438\n(Mar.-July)") +
   annotate("text", x = "09-10", 45, label = "sum of cons. > \naverage = 215\n(Aug.-Oct.)") +
   theme(legend.position = c(0.88, 0.64)) +
-  labs(title = title_total_vec, subtitle = subtitle_vec, x = NULL, NULL)
+  labs(title = title_total_vec, subtitle = subtitle_vec, x = NULL, y = NULL, caption = last_update)
 
 plot_elec_total_3
 
@@ -206,7 +206,8 @@ plot_elec_temp <- ggplot(data = temp2, aes(month_day, value, color = year, group
   labs(
     title = "Average temperature",
     subtitle = "in degrees, 7-day moving average",
-    x = NULL, NULL
+    x = NULL, y = NULL,
+    caption = last_update
     )
 
 plot_elec_temp
@@ -230,7 +231,7 @@ ggplot(filter(elec2, !var %in% c("Total consumption", "Average temperature")), a
     unhighlighted_params = list(color = "transparent")) +
   facet_wrap(facets = ~var, ncol = 2, scales = "free_y") +
   theme(legend.position = c(0.75, 0.25), axis.text = element_text(size = 10)) +
-  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, NULL)
+  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, y = NULL, caption = last_update)
 
 ggsave("04_elec-compo.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()
@@ -249,7 +250,7 @@ ggplot(filter(elec2,!var %in% c("Total consumption", "Average temperature")), ae
     unhighlighted_params = list(color = "transparent"))  +
   facet_wrap(facets = ~ var, ncol = 2, scales = "free_y") +
   theme(legend.position = c(0.78,0.14), axis.text = element_text(size = 10)) +
-  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, NULL)
+  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, y = NULL, caption = last_update)
 
 ggsave("05_elec-compo.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()
@@ -362,7 +363,7 @@ ggplot(
     color = "darkred"
     ) +
   theme(legend.position = c(0.78, 0.14), axis.text = element_text(size = 10)) +
-  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, NULL)
+  labs(title = title_client_vec, subtitle = subtitle_vec, x = NULL, y = NULL, caption = last_update)
 
 ggsave("06_elec-compo.png", path = fig_path, width = 8.5, height = 7)
 graphics.off()

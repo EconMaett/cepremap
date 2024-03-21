@@ -6,10 +6,11 @@ library(rdbnomics)
 library(seasonal)
 library(kableExtra)
 library(RColorBrewer)
-source("R/utils.R")
+source("C:/Users/matth/OneDrive/Dokumente/R-scripts/cepremap/R/utils.R")
 palette(brewer.pal(n = 5, name = "Set1"))
 fig_path  <- "figures/01_five-countries-data"
 last_date <- today()
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 
 ## Gather databases -----
 #   1. Smets & Wouters (2003) data base
@@ -133,7 +134,7 @@ ggplot(plot_df, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~country, nrow = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Government Consumption")
+  labs(title = "Government Consumption", caption = last_update)
 
 ggsave("01_gov_cons_DE-ES-IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -182,7 +183,7 @@ ggplot(plot_df, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~country, nrow = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Government Investment")
+  labs(title = "Government Investment", caption = last_update)
 
 ggsave("02_gov_inves_DE-ES-IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -231,7 +232,7 @@ ggplot(plot_df, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~country, nrow = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Government Social Transfers")
+  labs(title = "Government Social Transfers", caption = last_update)
 
 ggsave("03_gov_transf_DE-ES-IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -280,7 +281,7 @@ ggplot(plot_df, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~country, nrow = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Government Interest Payments")
+  labs(title = "Government Interest Payments", caption = last_update)
 
 ggsave("04_gov_intpay_DE-ES-IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -329,7 +330,7 @@ ggplot(plot_df, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~country, nrow = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Total Government Expenditure")
+  labs(title = "Total Government Expenditure", caption = last_update)
 
 ggsave("05_gov_exp_DE-ES-IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -378,7 +379,7 @@ ggplot(plot_df, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~country, nrow = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Total Government Revenue")
+  labs(title = "Total Government Revenue", caption = last_update)
 
 ggsave("06_gov_rev_DE-ES-IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -427,7 +428,7 @@ ggplot(plot_df, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~country, nrow = 4, scales = "free_y") +
   my_theme() +
-  ggtitle("Government debt")
+  labs(title = "Government debt", caption = last_update)
 
 ggsave("07_gov_debt_DE-ES-FR-IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -564,7 +565,7 @@ ggplot(plot_unempbenef, aes(period, value, color = Origin)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~country, nrow = 4, scales = "free_y") +
   my_theme() +
-  ggtitle("Unemployment benefits")
+  labs(title = "Unemployment benefits", caption = last_update)
 
 ggsave("08_unempbenef_DE-ES-FR-IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -659,7 +660,7 @@ ggplot(df, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Unchained Series")
+  labs(title = "Unchained Series", caption = last_update)
 
 ggsave("09_unchained_DE-ES-FR-IT.png", path = fig_path, height = 12, width = 10)
 graphics.off()
@@ -709,7 +710,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("France: Government Debt")
+  labs(title = "France: Government Debt", caption = last_update)
 
 ggsave("10_gov_debt_FR.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -749,7 +750,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("France: Population")
+  labs(title = "France: Population", caption = last_update)
 
 ggsave("11_pop_FR.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -782,7 +783,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("France: Lending Rate")
+  labs(title = "France: Lending Rate", caption = last_update)
 
 ggsave("12_lendingrate_FR.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -822,7 +823,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("France: Unemployment Benefits")
+  labs(title = "France: Unemployment Benefits", caption = last_update)
 
 ggsave("13_unempbenef_FR.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -896,7 +897,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Spain: Government Debt")
+  labs(title = "Spain: Government Debt", caption = last_update)
 
 ggsave("14_gov_debt_ES.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -936,7 +937,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Spain: Population")
+  labs(title = "Spain: Population", caption = last_update)
 
 ggsave("15_pop_ES.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -969,7 +970,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Spain: Lending Rate")
+  labs(title = "Spain: Lending Rate", caption = last_update)
 
 ggsave("16_lendingrate_ES.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1009,7 +1010,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Unemployment Benefits")
+  labs(title = "Unemployment Benefits", caption = last_update)
 
 ggsave("17_unempbenef_ES.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1083,7 +1084,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Government Debt")
+  labs(title = "Germany: Government Debt", caption = last_update)
 
 ggsave("18_govdebt_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1123,7 +1124,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Population")
+  labs(title = "Germany: Population", caption = last_update)
 
 ggsave("19_pop_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1156,7 +1157,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Lending Rate")
+  labs(title = "Germany: Lending Rate", caption = last_update)
 
 ggsave("20_lendingrate_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1196,7 +1197,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Unemployment Benefits")
+  labs(title = "Germany: Unemployment Benefits", caption = last_update)
 
 ggsave("21_unempbenef_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1238,7 +1239,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Government Consumption")
+  labs(title = "Germany: Government Consumption", caption = last_update)
 
 ggsave("22_gov_cons_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1280,7 +1281,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Government Investment")
+  labs(title = "Germany: Government Investment", caption = last_update)
 
 ggsave("23_gov_inves_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1322,7 +1323,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Government Social Transfers")
+  labs(title = "Germany: Government Social Transfers", caption = last_update)
 
 ggsave("24_gov_soctransf_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1364,7 +1365,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Total Government Expenditure")
+  labs(title = "Germany: Total Government Expenditure", caption = last_update)
 
 ggsave("25_gov_exp_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1406,7 +1407,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Total Government Revenue")
+  labs(title = "Germany: Total Government Revenue", caption = last_update)
 
 ggsave("26_gov_rev_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1448,7 +1449,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Germany: Government Interest Payments")
+  labs(title = "Germany: Government Interest Payments", caption = last_update)
 
 ggsave("27_gov_intpay_DE.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1514,7 +1515,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Consumption")
+  labs(title = "Italy: Consumption", caption = last_update)
 
 ggsave("28_consumption_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1556,7 +1557,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Investment")
+  labs(title = "Italy: Investment", caption = last_update)
 
 ggsave("29_investment_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1597,7 +1598,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Investment Deflator")
+  labs(title = "Italy: Investment Deflator", caption = last_update)
 
 ggsave("30_invesdef_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1642,7 +1643,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Government Debt")
+  labs(title = "Italy: Government Debt", caption = last_update)
 
 ggsave("31_govdebt_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1683,7 +1684,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Population")
+  labs(title = "Italy: Population", caption = last_update)
 
 ggsave("32_pop_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1715,7 +1716,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Lending Rate")
+  labs(title = "Italy: Lending Rate", caption = last_update)
 
 ggsave("33_lendingrate_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1755,7 +1756,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Unemployment Benefits")
+  labs(title = "Italy: Unemployment Benefits", caption = last_update)
 
 ggsave("34_unempbenef_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1797,7 +1798,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Government Consumption")
+  labs(title = "Italy: Government Consumption", caption = last_update)
 
 ggsave("35_govcons_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1837,7 +1838,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Government Investment")
+  labs(title = "Italy: Government Investment", caption = last_update)
 
 ggsave("36_gov_inv_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1879,7 +1880,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Government Social Transfers")
+  labs(title = "Italy: Government Social Transfers", caption = last_update)
 
 ggsave("37_gov_soctransf_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1921,7 +1922,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Total Government Expenditure")
+  labs(title = "Italy: Total Government Expenditure", caption = last_update)
 
 ggsave("38_gov_exp_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -1963,7 +1964,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Total Government Revenue")
+  labs(title = "Italy: Total Government Revenue", caption = last_update)
 
 ggsave("39_gov_rev_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2004,7 +2005,7 @@ plot_df <- bind_rows(
 ggplot(plot_df, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Italy: Government Interest Payments")
+  labs(title = "Italy: Government Interest Payments", caption = last_update)
 
 ggsave("40_gov_intpay_IT.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2139,7 +2140,7 @@ ggplot(plot_data_df, aes(period, value, col = country_name)) +
   geom_line(lwd = 1.2) +
   facet_wrap(~varname, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Series for the estimation")
+  labs(title = "Series for the estimation", caption = last_update)
 
 ggsave("41_estimation.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2184,7 +2185,7 @@ leverage <- debt |>
 ggplot(leverage, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Leverage")
+  labs(title = "Leverage", caption = last_update)
 
 ggsave("42_leverage.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2242,7 +2243,7 @@ delta_FIN <- bind_rows(delta_countries, delta_EA)
 ggplot(delta_FIN, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Depreciation rate of the capital stock")
+  labs(title = "Depreciation rate of the capital stock", caption = last_update)
 
 ggsave("43_depreciation.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2280,7 +2281,7 @@ alpha_FIN <- bind_rows(alpha_countries, alpha_EA)
 ggplot(alpha_FIN, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Share of capital revenues in GDP")
+  labs(title = "Share of capital revenues in GDP", caption = last_update)
 
 ggsave("44_capital_revenues.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2316,7 +2317,7 @@ capital_FIN <- bind_rows(capital_countries, capital_EA)
 ggplot(capital_FIN, aes(period, value, color = country)) +
   geom_line(lwd = 1.2)+
   my_theme() +
-  ggtitle("Stock of capital in GDP")
+  labs(title = "Stock of capital in GDP", caption = last_update)
 
 ggsave("45_capital_shares.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2365,7 +2366,7 @@ oil <- oil_import_value |>
 ggplot(oil, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Share of oil imports in GDP")
+  labs(title = "Share of oil imports in GDP", caption = last_update)
 
 ggsave("46_oil_import_shares.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2395,7 +2396,7 @@ petrol_conso <- hhconso |>
 ggplot(petrol_conso, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Petrol consumption to GDP ratio")
+  labs(title = "Petrol consumption to GDP ratio", caption = last_update)
 
 ggsave("47_petrol_cons_shares.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2418,7 +2419,7 @@ imported_conso <- rdb("Eurostat", "naio_10_cp1700", mask = "A.MIO_EUR.IMP.P3+P51
 ggplot(imported_conso, aes(period, value, color = country)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Share of final consumption in total imports")
+  labs(title = "Share of final consumption in total imports", caption = last_update)
 
 ggsave("48_cons_imp_shares.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -2427,7 +2428,8 @@ graphics.off()
 ea_gdp <- rdb(ids = "Eurostat/namq_10_gdp/Q.CP_MEUR.SCA.B1GQ.EA19") |> 
   select(period, gdp = value)
 
-df <- rdb("ECB", "TRD", mask = "M.I8.Y.M+X.TTT.J8.4.VAL")
+df <- rdb("ECB", "TRD", mask = "M.I9.Y.M+X.TTT.J9.4.VAL")
+# Original: M.I8.Y.M+X.TTT.J8.4.VAL
 
 ea_trade <- df |> 
   mutate(
@@ -2599,7 +2601,7 @@ ggplot(rawdata_growth_ratio, aes(period, value, color = country)) +
   geom_line(lwd = 1.2)+
   facet_wrap(~varname, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Series for the calibration")
+  labs(title = "Series for the calibration", caption = last_update)
 
 ggsave("49_final.png", path = fig_path, height = 12, width = 12)
 graphics.off()

@@ -8,6 +8,7 @@ library(RColorBrewer)
 source("R/utils.R")
 palette(brewer.pal(n = 2, name = "Set1"))
 fig_path <- "figures/06_open-EA-data/"
+last_update <- paste0("Last update: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
 # International quarterly data base for the Euro area:
 #   - Foreign demand (without trade between Euro area countries)
 #   - Foreign interest rate
@@ -48,9 +49,10 @@ ggplot(imports, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ country, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle(
-    label = "Imports of goods and services",
-    subtitle = "(volume, seasonally adjusted, national currency)"
+  labs(
+    title = "Imports of goods and services",
+    subtitle = "(volume, seasonally adjusted, national currency)",
+    caption = last_update
     )
 
 ggsave("01_imports.png", path = fig_path, height = 8, width = 10)
@@ -93,9 +95,10 @@ ggplot(imports_growth_rate, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ country, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle(
-    label = "Growth rates of imports of goods and services",
-    subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)"
+  labs(
+    title = "Growth rates of imports of goods and services",
+    subtitle = "(% quarter-on-quarter, volume, seasonally adjusted)",
+    caption = last_update
   )
 
 ggsave("02_imports_gr.png", path = fig_path, height = 8, width = 10)
@@ -196,7 +199,7 @@ plot_export <- rbind(export_15, export_all)
 ggplot(plot_export, aes(period, value, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Extra-Eurozone exports, with / without Eastern countries")
+  labs(title = "Extra-Eurozone exports, with / without Eastern countries", caption = last_update)
 
 ggsave("03_exports-east.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -231,7 +234,7 @@ plot_export2 <- bind_rows(
 ggplot(plot_export2, aes(period, value2, color = var)) +
   geom_line(lwd = 1.2) +
   my_theme() +
-  ggtitle("Growth rate of extra-area exports, with 10 and 14 partners")
+  labs(title = "Growth rate of extra-area exports, with 10 and 14 partners", caption = last_update)
 
 ggsave("04_imports-brics.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -285,7 +288,7 @@ ggplot(alphas, aes(period, alpha)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ country, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("Share of Eurozone exports among all Eurozone exports")
+  labs(title = "Share of Eurozone exports among all Eurozone exports", caption = last_update)
 
 ggsave("05_exports-ea.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -329,7 +332,7 @@ ggplot(plot_wd, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ var, ncol = 1, scales = "free_y") +
   my_theme() +
-  ggtitle("Foreign demand for the Eurozone, base 100 = 2010")
+  labs(title = "Foreign demand for the Eurozone, base 100 = 2010", caption = last_update)
 
 ggsave("06_foreign-demand-ea.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -349,7 +352,7 @@ shortrate <- df |>
 ggplot(shortrate, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   my_theme() +
-  ggtitle("Foreign interest rate")
+  labs(title = "Foreign interest rate", caption = last_update)
 
 ggsave("07_foreign-interest-rate.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -365,7 +368,7 @@ oil_prices <- df |>
 ggplot(oil_prices, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   my_theme() +
-  ggtitle("Crude oil prices")
+  labs(title = "Crude oil prices", caption = last_update)
 
 ggsave("08_oil-price.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -386,7 +389,7 @@ reer <- df |>
 ggplot(reer, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   my_theme() +
-  ggtitle("Real Effective Exchange Rate")
+  labs(title = "Real Effective Exchange Rate", caption = last_update)
 
 ggsave("09_reer.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -411,7 +414,7 @@ ggplot(trade, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ var, nrow = 2) +
   my_theme() +
-  ggtitle("Extra euro area imports / exports, in volume, seasonally adjusted")
+  labs(title = "Extra euro area imports / exports, in volume, seasonally adjusted", caption = last_update)
 
 ggsave("10_ea-imports-exports.png", path = fig_path, height = 8, width = 10)
 graphics.off()
@@ -485,7 +488,7 @@ ggplot(plot_EA_Open_data, aes(period, value)) +
   geom_line(lwd = 1.2, color = blue_obs_macro) +
   facet_wrap(~ var, ncol = 3, scales = "free_y") +
   my_theme() +
-  ggtitle("International database for the Euro Area")
+  labs(title = "International database for the Euro Area", caption = last_update)
 
 ggsave("11_final.png", path = fig_path, height = 8, width = 10)
 graphics.off()
