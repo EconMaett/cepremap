@@ -5,8 +5,9 @@ taskscheduleR::taskscheduler_create(
   schedule = "ONCE",
   starttime = format(Sys.time() + 2*60, "%H:%M")
 )
+
 fs::path_abs("") # C:/Users/matth/OneDrive/Dokumente/R-scripts/cepremap
 
-# taskscheduleR::taskscheduler_delete(taskname = "09_cmr14-data.R")
+taskscheduleR::taskscheduler_delete(taskname = "01_five-countries-data.R")
 
 

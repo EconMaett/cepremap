@@ -396,7 +396,8 @@ graphics.off()
 
 ## Extra Euro area imports and exports ----
 # TRD database from the ECB
-df <- rdb("ECB", "TRD", mask = "M.I8.Y.M+X.TTT.J8.4.VOX")
+# Formerly: M.I8.Y.M+X.TTT.J8.4.VOX
+df <- rdb("ECB", "TRD", mask = "M.I9.Y.M+X.TTT.J9.4.VOX")
 
 trade <- df |> 
   mutate(
